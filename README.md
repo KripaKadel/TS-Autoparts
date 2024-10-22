@@ -76,7 +76,7 @@
 -	**Uniqueness:** Each category must have a unique name.
 -	**Mandatory:** name
 -	**Optional:** description
-
+![ERD](https://github.com/user-attachments/assets/0f16c252-ed93-4e68-923f-4daef72dd5a1)
 
 
 
