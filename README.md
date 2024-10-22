@@ -69,6 +69,14 @@
 -	Payment status can be Paid, Pending, or Failed.
 -	**Uniqueness:** Each payment must be linked to a unique order_id or appointment_id.
 -	**Mandatory:** user_id, order_id or appointment_id, payment_method, status.
+### 11.Categories
+-	A category has a name and description.
+-	Products are assigned to a specific category for easier filtering and browsing by users.
+-	Categories help users narrow down their search based on the type of car parts they need.
+-	**Uniqueness:** Each category must have a unique name.
+-	**Mandatory:** name
+-	**Optional:** description
+
 
 
 
