@@ -8,12 +8,12 @@
 - **Uniqueness:** Each admin must have a unique email and phone number.
 - **Mandatory:** name, email, phone number, password.
 ### 2.Users
-- A user has a username, full name, email, password, phone number.
+- A user has a  full name, email, password, phone number.
 - A user can browse products, add products to the cart, place orders, book garage services, and leave reviews for products and mechanics.
 - A user can book appointments for garage services by selecting an available time slot.
 - A user can give ratings and reviews for both products they have purchased and mechanics who provided services.
 - **Uniqueness:** Each user must have a unique email and phone number.
-- **Mandatory:** username, full name, email, password, phone number.
+- **Mandatory:**  full name, email, password, phone number.
 - **Optional:** profile image.
 ### 3.Mechanic
 - A mechanic has name, email, phone number, password.
@@ -28,7 +28,7 @@
 - A product can be filtered by brand, category, and model for easy browsing by users.
 -	Users can give ratings and reviews for products after purchasing them.
 -	**Uniqueness:** Each product must have a unique name and model.
-- **Mandatory:** name, brand, category, price, model, stock.
+- **Mandatory:** name, brand, category_id, price, model, stock.
 - **Optional:** description.
 ### 5.Cart
 -	A cart is associated with a single user and can contain multiple products.
