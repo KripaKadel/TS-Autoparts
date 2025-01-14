@@ -2,23 +2,36 @@
 
 namespace App\Models;
 
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Model
+class User extends Authenticatable
 {
-    use HasFactory;
+    use HasFactory, HasApiTokens, Notifiable;
 
-    protected $table = 'Users';
+    protected $table = 'users';
 
     protected $fillable = [
-        'name', 'email', 'phone_number', 'password', 'role', 'profile_image'
+        'name', 
+        'email', 
+        'phone_number', 
+        'password', 
+        'role', 
+        'profile_image'
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
     ];
 
     const ROLE_ADMIN = 'admin';
     const ROLE_CUSTOMER = 'customer';
     const ROLE_MECHANIC = 'mechanic';
 
+    // Your existing methods remain the same
     public function scopeAdmins($query)
     {
         return $query->where('role', self::ROLE_ADMIN);
@@ -34,7 +47,7 @@ class User extends Model
         return $query->where('role', self::ROLE_MECHANIC);
     }
 
-    // Define relationships
+    // Your relationships remain the same
     public function orders()
     {
         return $this->hasMany(orders::class);
@@ -42,7 +55,7 @@ class User extends Model
 
     public function appointments()
     {
-        return $this->hasMany(appointment::class);
+        return $this->hasMany(Appointment::class);
     }
 
     public function reviews()
@@ -52,11 +65,11 @@ class User extends Model
 
     public function cart()
     {
-        return $this->hasOne(cart::class);
+        return $this->hasOne(Cart::class);
     }
 
     public function payments()
     {
-        return $this->hasMany(payments::class);
+        return $this->hasMany(Payments::class);
     }
 }
