@@ -188,8 +188,8 @@ class _LoginScreenState extends State<LoginScreen> {
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey[600]),
-        prefixIcon: isEmailField ? null : Icon(icon, color: Colors.black), // For email field, no left icon
-        suffixIcon: isEmailField ? Icon(icon, color: Colors.black) : null, // Place email icon on the right
+        prefixIcon: isEmailField ? null : Icon(icon, color: Color(0xFF7A879C)), // Updated icon color
+        suffixIcon: isEmailField ? Icon(icon, color: Color(0xFF7A879C)) : null, // Updated icon color
         filled: true,
         fillColor: Color(0xFFF2F7FF),
         border: OutlineInputBorder(
@@ -224,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: Colors.black,
+            color: Color(0xFF7A879C), // Updated icon color
           ),
           onPressed: () {
             setState(() {

@@ -170,7 +170,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _buildTextField(
                       controller: fullNameController,
                       hintText: "Full Name",
-                      suffixIcon: Icon(Icons.person), // Wrapped with Icon widget
+                      suffixIcon: Icon(Icons.person, color: Color(0xFF7A879C)), // Updated icon color
                       textInputAction: TextInputAction.next,
                       focusNode: fullNameFocusNode,
                       nextFocusNode: emailFocusNode,
@@ -181,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _buildTextField(
                       controller: emailController,
                       hintText: "Email",
-                      suffixIcon: Icon(Icons.email), // Wrapped with Icon widget
+                      suffixIcon: Icon(Icons.email, color: Color(0xFF7A879C)), // Updated icon color
                       textInputAction: TextInputAction.next,
                       focusNode: emailFocusNode,
                       nextFocusNode: phoneFocusNode,
@@ -192,7 +192,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _buildTextField(
                       controller: phoneController,
                       hintText: "Phone No",
-                      suffixIcon: Icon(Icons.phone), // Wrapped with Icon widget
+                      suffixIcon: Icon(Icons.phone, color: Color(0xFF7A879C)), // Updated icon color
                       textInputAction: TextInputAction.next,
                       focusNode: phoneFocusNode,
                       nextFocusNode: passwordFocusNode,
@@ -213,7 +213,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                         child: Icon(
                           isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                          color: Color(0xFF7A879C),
+                          color: Color(0xFF7A879C), // Updated icon color
                         ),
                       ),
                       focusNode: passwordFocusNode,
@@ -235,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                         child: Icon(
                           isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                          color: Color(0xFF7A879C),
+                          color: Color(0xFF7A879C), // Updated icon color
                         ),
                       ),
                       focusNode: confirmPasswordFocusNode,
@@ -341,7 +341,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       },
       decoration: InputDecoration(
         hintText: hintText,
-        suffixIcon: suffixIcon,  // All icons are now suffix icons
+        suffixIcon: suffixIcon,  // All icons are now suffix icons with updated color
         filled: true,
         fillColor: Color(0xFFF2F7FF),
         border: InputBorder.none,
