@@ -1,7 +1,14 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
 
-@section('content')
-<div class="flex justify-center items-center h-screen bg-gray-100">
+<div class="flex justify-center items-center h-screen">
     <div class="bg-white p-8 rounded shadow-lg w-96">
         <h2 class="text-2xl font-bold mb-6 text-center">Admin Login</h2>
 
@@ -31,4 +38,6 @@
         </form>
     </div>
 </div>
-@endsection
+
+</body>
+</html>

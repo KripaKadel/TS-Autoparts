@@ -1,6 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;  
+namespace App\Http\Controllers;
+
+use App\Models\Appointment;
+use App\Models\Orders;
+use App\Models\Products;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -38,6 +42,23 @@ class AdminController extends Controller
     // Admin dashboard
     public function dashboard()
     {
-        return view('admin.dashboard');
+        // Fetch data for dashboard stats
+        $totalOrders = Orders::count(); // Assuming you have an Order model
+        $totalAppointments = Appointment::count(); // Assuming you have an Appointment model
+        $totalProducts = Products::count(); // Assuming you have a Product model
+        $totalUsers = User::count(); // Assuming you have a User model
+
+        // Pass the data to the view
+        return view('admin.dashboard', compact('totalOrders', 'totalAppointments', 'totalProducts', 'totalUsers'));
+    }
+
+    // Admin logout
+    public function logout(Request $request)
+    {
+        Auth::logout(); // Log out the admin
+        $request->session()->invalidate(); // Invalidate the session
+        $request->session()->regenerateToken(); // Regenerate the CSRF token
+
+        return redirect()->route('admin.login'); // Redirect to the login page
     }
 }
