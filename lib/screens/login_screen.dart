@@ -19,11 +19,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _obscurePassword = true; // For password visibility toggle
+  String? _errorMessage; // To hold error messages
 
   // Handle login
   Future<void> _login() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null; // Clear any previous error messages
     });
 
     final user = await _authService.loginUser(
@@ -40,9 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       setState(() {
         _isLoading = false;
+        _errorMessage = 'Invalid email or password'; // Show specific error message
       });
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed')));
     }
   }
 
@@ -117,6 +118,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     _buildPasswordField(),
 
                     SizedBox(height: 20),
+
+                    // Show error message if login failed
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
 
                     // Login Button
                     _isLoading

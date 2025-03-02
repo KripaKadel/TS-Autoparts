@@ -72,6 +72,19 @@ flutter:
       - assets/icons/Cart.svg
       - assets/icons/Profile.svg
       - assets/images/filters.png
+      - assets/images/Mechanic.svg
+      - assets/icons/Battery.svg
+      - assets/icons/BodyParts.svg
+      - assets/icons/Bearing.svg
+      - assets/icons/Brakes.svg
+      - assets/icons/Cooling.svg
+      - assets/icons/Engine.svg
+      - assets/icons/Filters.svg
+      - assets/icons/Fluids.svg
+      - assets/icons/Lights.svg
+      - assets/icons/Shocks.svg
+
+     
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

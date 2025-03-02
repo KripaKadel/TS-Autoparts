@@ -7,7 +7,7 @@ class CustomBottomNavbar extends StatelessWidget {
 
   CustomBottomNavbar({
     required this.selectedIndex,
-    required this.onTap,
+    required this.onTap, // Function to handle tap
   });
 
   @override

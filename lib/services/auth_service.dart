@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ts_autoparts_app/models/user.dart'; // Import the User model
 
 class AuthService {
-   static const String baseUrl = 'http://192.168.1.71:8000/api';
+  static const String baseUrl = 'http://192.168.1.71:8000/api';
   //static const String baseUrl = 'http://10.0.2.2:8000/api';
 
   // Register a new user (no role field needed)
@@ -77,6 +77,35 @@ class AuthService {
     } else {
       print('No token found');
       return null;
+    }
+  }
+
+  // Logout the user
+  Future<bool> logoutUser() async {
+    final storage = FlutterSecureStorage();
+    String? token = await storage.read(key: 'access_token');
+
+    if (token != null) {
+      // Send the request to logout
+      final response = await http.post(
+        Uri.parse('$baseUrl/logout'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // Clear the token from secure storage
+        await storage.delete(key: 'access_token');
+        return true;
+      } else {
+        print('Logout failed: ${response.body}');
+        return false;
+      }
+    } else {
+      print('No token found to logout');
+      return false;
     }
   }
 }
