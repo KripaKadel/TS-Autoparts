@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -9,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
+    // Login method to authenticate the user
     public function login(Request $request)
     {
         // Validate the incoming request
@@ -39,5 +39,17 @@ class LoginController extends Controller
             'access_token' => $token,
             'user' => $user,
         ]);
+    }
+
+    // Logout method to invalidate the user's token
+    public function logout(Request $request)
+    {
+        // Revoke the user's current access token
+        $request->user()->currentAccessToken()->delete();
+
+        // Optionally, you can log the user out of all devices by deleting all tokens:
+        // $request->user()->tokens->each->delete();
+
+        return response()->json(['message' => 'Logged out successfully.']);
     }
 }
