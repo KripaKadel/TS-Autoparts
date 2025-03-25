@@ -12,7 +12,7 @@ Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('adm
 
 // Route for handling admin login logic
 Route::post('/admin/login', [AdminController::class, 'login']);
-
+ 
 // Define the logout route (POST request for logout)
 Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.logout');
 
@@ -65,3 +65,4 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('destroy'); // Delete user
     });
 });
+
