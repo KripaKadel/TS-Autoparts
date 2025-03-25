@@ -55,10 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _showDialog("Success", "Registration successful! Welcome, ${user.name}!", isSuccess: true);
         _clearFields();
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
-        );
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
         _showDialog("Error", "Registration failed. Please try again.");
       }

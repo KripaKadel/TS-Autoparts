@@ -1,0 +1,2 @@
+D:/TS_Autoparts/TS_Autoparts_Flutter/ts_autoparts_app/android/app/.cxx/Debug/3r3y5s6l/x86/CMakeFiles/edit_cache.dir
+D:/TS_Autoparts/TS_Autoparts_Flutter/ts_autoparts_app/android/app/.cxx/Debug/3r3y5s6l/x86/CMakeFiles/rebuild_cache.dir

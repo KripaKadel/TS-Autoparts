@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:ts_autoparts_app/main.dart';
+import 'package:ts_autoparts_app/services/product_service.dart'; // Import the ProductService
+import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
+import 'package:ts_autoparts_app/screens/services_screen.dart'; // Assuming ServiceScreen is in service_screen.dart
 
 void main() {
   runApp(MyApp());
@@ -12,14 +16,14 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'TS Autoparts',
       theme: ThemeData(
-        primaryColor: Color(0xFF144FAB), // Set custom primary color globally
+        primaryColor: Color(0xFF144FAB),
         primarySwatch: MaterialColor(0xFF144FAB, {
           50: Color(0xFFE6F0FF),
           100: Color(0xFFB3D6FF),
           200: Color(0xFF80BBFF),
           300: Color(0xFF4DA0FF),
           400: Color(0xFF1A85FF),
-          500: Color(0xFF006AFF), // Your custom color
+          500: Color(0xFF006AFF),
           600: Color(0xFF0057CC),
           700: Color(0xFF0043B2),
           800: Color(0xFF00308F),
@@ -27,12 +31,29 @@ class MyApp extends StatelessWidget {
         }),
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: HomeScreen(),
+      initialRoute: '/', // Set the initial route
+      routes: {
+        '/': (context) => HomeScreen(),
+        '/services': (context) => ServicesScreen(), // Navigate to your existing ServiceScreen
+      },
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late Future<List<Product>> futureProducts;
+
+  @override
+  void initState() {
+    super.initState();
+    futureProducts = ProductService().fetchProducts(); // Fetch products
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                       // Logo
                       SvgPicture.asset('assets/images/BLogo.svg', height: 40),
                       // Profile Picture
-                      CircleAvatar(backgroundImage: AssetImage('assets/profile.jpg')),
+                      CircleAvatar(backgroundImage: AssetImage('assets/images/profile.jpg')),
                     ],
                   ),
                 ),
@@ -136,8 +157,8 @@ class HomeScreen extends StatelessWidget {
                                     text: 'Top-Quality Auto Parts!',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Color(0xFF144FAB), // Highlight color
-                                      fontWeight: FontWeight.bold, // Make it bold
+                                      color: Color(0xFF144FAB),
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
@@ -149,7 +170,13 @@ class HomeScreen extends StatelessWidget {
                                 backgroundColor: Color(0xFF144FAB),
                                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               ),
-                              onPressed: () {},
+                              onPressed: () {
+                                // Navigate to the existing ServiceScreen page
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => ProductsWrapper()),
+                                );
+                              },
                               child: Text('Shop Now', style: TextStyle(color: Colors.white)),
                             ),
                           ],
@@ -157,11 +184,11 @@ class HomeScreen extends StatelessWidget {
                       ),
                       // Right side image
                       Container(
-                        width: 120, // Adjust width to make it larger
-                        height: 180, // Make sure it matches the promotional background height
+                        width: 120,
+                        height: 180,
                         child: Image.asset(
-                          'assets/images/filters.png', // The image you want to stick
-                          fit: BoxFit.cover, // Ensures it covers the space and removes any gaps
+                          'assets/images/filters.png',
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ],
@@ -171,7 +198,7 @@ class HomeScreen extends StatelessWidget {
 
                 // Categories Section
                 Align(
-                  alignment: Alignment.centerLeft, // Align text to the left
+                  alignment: Alignment.centerLeft,
                   child: Text(
                     'Categories',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -200,26 +227,39 @@ class HomeScreen extends StatelessWidget {
 
                 // Featured Products Section
                 Align(
-                  alignment: Alignment.centerLeft, // Align text to the left
+                  alignment: Alignment.centerLeft,
                   child: Text(
                     'Featured Products',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 SizedBox(height: 16),
-                Container(
-                  height: 200,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _buildProductCard('Air Filter', 'Rs.250', 4.5),
-                      _buildProductCard('Break Pad', 'Rs.250', 4.5),
-                      _buildProductCard('Brake Shoe', 'Rs.250', 4.5),
-                      _buildProductCard('Bearings', 'Rs.250', 4.5),
-                      _buildProductCard('Air Filter', 'Rs.250', 4.5),
-                      _buildProductCard('Air Filter', 'Rs.250', 4.5),
-                    ],
-                  ),
+                FutureBuilder<List<Product>>(
+                  future: futureProducts,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Center(child: Text('No products found'));
+                    } else {
+                      List<Product> products = snapshot.data!;
+
+                      // Print the image URL for each product
+                      for (var product in products) {
+                        print("Product image URL: ${product.image_url}");
+                      }
+
+                      return Container(
+                        height: 200,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: products.map((product) => _buildProductCard(product)).toList(),
+                        ),
+                      );
+                    }
+                  },
                 ),
                 SizedBox(height: 20),
 
@@ -260,7 +300,13 @@ class HomeScreen extends StatelessWidget {
                                 backgroundColor: Color(0xFF144FAB),
                                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               ),
-                              onPressed: () {},
+                              onPressed: () {
+                                // Navigate to the existing ServiceScreen page
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => ServicesWrapper()),
+                                );
+                              },
                               child: Text('Book Appointment', style: TextStyle(color: Colors.white)),
                             ),
                           ],
@@ -269,7 +315,7 @@ class HomeScreen extends StatelessWidget {
                       Container(
                         width: 120,
                         child: SvgPicture.asset(
-                          'assets/images/Mechanic.svg', // Replace with SvgPicture for SVG image
+                          'assets/images/Mechanic.svg',
                           fit: BoxFit.contain,
                         ),
                       ),
@@ -285,30 +331,30 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // Category Item Builder using SvgPicture.asset
+  // Category Item Builder
   Widget _buildCategoryItem(String imagePath, String name) {
     return Container(
-      width: 80,  // Increased width to make it a bit bigger
-      margin: EdgeInsets.only(right: 0.25), // Reduced margin for smaller gap
+      width: 80,
+      margin: EdgeInsets.only(right: 0.25),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            height: 60,  // Increased height to make the icon bigger
-            width: 60,   // Increased width to make the icon bigger
+            height: 60,
+            width: 60,
             decoration: BoxDecoration(
               color: Color(0xFFE6F0FF),
               borderRadius: BorderRadius.circular(8),
             ),
             child: SvgPicture.asset(
-              imagePath,  // Use SvgPicture to load the SVG
-              fit: BoxFit.scaleDown, // Ensures the icon scales to fit inside the container
+              imagePath,
+              fit: BoxFit.scaleDown,
             ),
           ),
           SizedBox(height: 8),
           Text(
             name,
-            style: TextStyle(fontSize: 14), // Increased font size for better readability
+            style: TextStyle(fontSize: 14),
             textAlign: TextAlign.center,
           ),
         ],
@@ -317,7 +363,9 @@ class HomeScreen extends StatelessWidget {
   }
 
   // Product Card Builder
-  Widget _buildProductCard(String name, String price, double rating) {
+  Widget _buildProductCard(Product product) {
+    final double dummyRating = 4.5;
+
     return Container(
       width: 150,
       margin: EdgeInsets.only(right: 16),
@@ -338,7 +386,16 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             child: Center(
-              child: Icon(Icons.filter_alt, size: 50, color: Colors.grey[700]),
+              child: product.image_url != null
+                  ? Image.network(
+                      product.image_url!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        print("Error loading image: $error");
+                        return Icon(Icons.error, size: 50, color: Colors.red);
+                      },
+                    )
+                  : Icon(Icons.image, size: 50, color: Colors.grey[700]),
             ),
           ),
           Padding(
@@ -346,17 +403,18 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(product.name, style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(Icons.star, color: Colors.amber, size: 16),
                     SizedBox(width: 4),
-                    Text('$rating', style: TextStyle(fontSize: 12)),
+                    Text('$dummyRating', style: TextStyle(fontSize: 12)),
                   ],
                 ),
                 SizedBox(height: 4),
-                Text(price,
+                Text(
+                  'Rs. ${product.price.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF144FAB),

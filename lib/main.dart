@@ -1,27 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:khalti/khalti.dart'; // Use khalti package
+import 'package:ts_autoparts_app/screens/home_screen.dart'; // Import Home page
+import 'package:ts_autoparts_app/screens/login_screen.dart'; // Import Login page
+import 'package:ts_autoparts_app/screens/profile_screen.dart'; // Import Profile page
+import 'package:ts_autoparts_app/screens/register_screen.dart'; // Import Register page
+import 'package:ts_autoparts_app/screens/products_screen.dart'; // Import Products page
+import 'package:ts_autoparts_app/screens/services_screen.dart'; // Import Services page
+import 'package:ts_autoparts_app/screens/cart_screen.dart'; // Import Cart page
 import 'package:ts_autoparts_app/components/navbar.dart'; // Import the custom bottom navbar
-import 'package:ts_autoparts_app/screens/home_screen.dart'; // Import your Home page
-import 'package:ts_autoparts_app/screens/products_screen.dart'; // Import your Products page
-import 'package:ts_autoparts_app/screens/services_screen.dart'; // Import your Services page
-import 'package:ts_autoparts_app/screens/cart_screen.dart'; // Import your Cart page
-import 'package:ts_autoparts_app/screens/profile_screen.dart'; // Import your Profile page
 
 void main() {
+  // Initialize Khalti SDK with your public key
+  Khalti.init(
+    publicKey: 'e3ae01975125486f96a9b3e8e29077e2', // Your Khalti public key
+  );
+
   runApp(MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   @override
-  _MyAppState createState() => _MyAppState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primaryColor: Color(0xFF144FAB), // Set the primary color for the whole app
+        appBarTheme: AppBarTheme(
+          backgroundColor: Color(0xFF144FAB), // Set AppBar color to primary color
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF144FAB), // Set the background color for buttons
+          ),
+        ),
+        buttonTheme: ButtonThemeData(
+          buttonColor: Color(0xFF144FAB), // Set button color globally
+        ),
+        scaffoldBackgroundColor: Colors.white, // Set background color
+      ),
+      // Define routes for navigation
+      routes: {
+        '/login': (context) => LoginScreen(),
+        '/register': (context) => RegisterScreen(),
+        '/home': (context) => HomeWrapper(), // Use a wrapper for HomeScreen
+        '/profile': (context) => ProfileWrapper(), // Profile Wrapper
+        '/products': (context) => ProductsWrapper(), // Products Wrapper
+        '/services': (context) => ServicesWrapper(), // Services Wrapper
+        '/cart': (context) => CartWrapper(), // Cart Wrapper
+      },
+      initialRoute: '/login', // Set the initial route to the LoginScreen
+    );
+  }
 }
 
-class _MyAppState extends State<MyApp> {
+// Wrapper for HomeScreen to include the bottom navigation bar
+class HomeWrapper extends StatefulWidget {
+  @override
+  _HomeWrapperState createState() => _HomeWrapperState();
+}
+
+class _HomeWrapperState extends State<HomeWrapper> {
   int _selectedIndex = 0;
 
-  // Custom primary color (144FAB)
-  final Color primaryColor = Color(0xFF144FAB); // Your desired primary color
-
-  // List of pages corresponding to each tab
   final List<Widget> _pages = [
     HomeScreen(),
     ProductsScreen(),
@@ -30,47 +70,159 @@ class _MyAppState extends State<MyApp> {
     ProfileScreen(),
   ];
 
-  // Function to handle page navigation based on the selected index
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-
-    // Navigate to the appropriate page based on the selected index
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => _pages[index]),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: primaryColor, // Set the primary color for the whole app
-        appBarTheme: AppBarTheme(
-          backgroundColor: primaryColor, // Set AppBar color to primary color
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primaryColor, // Set the background color for buttons
-          ),
-        ),
-        buttonTheme: ButtonThemeData(
-          buttonColor: primaryColor, // Set button color globally
-        ),
-        scaffoldBackgroundColor: Colors.white, // Set background color
+    return Scaffold(
+      body: _pages[_selectedIndex], // Display the selected page
+      bottomNavigationBar: CustomBottomNavbar(
+        selectedIndex: _selectedIndex,
+        onTap: _onItemTapped,
       ),
-      home: Scaffold(
-        body: _pages[_selectedIndex], // Display the selected page
-        bottomNavigationBar: CustomBottomNavbar(
-          selectedIndex: _selectedIndex,
-          onTap: (index) {
-            // When an item is tapped, it updates the index and navigates
-            _onItemTapped(index);
-          },
-        ),
+    );
+  }
+}
+
+// Wrapper for ProductsScreen to include the bottom navigation bar
+class ProductsWrapper extends StatefulWidget {
+  @override
+  _ProductsWrapperState createState() => _ProductsWrapperState();
+}
+
+class _ProductsWrapperState extends State<ProductsWrapper> {
+  int _selectedIndex = 1;
+
+  final List<Widget> _pages = [
+    HomeScreen(),
+    ProductsScreen(),
+    ServicesScreen(),
+    CartScreen(),
+    ProfileScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex], // Display the selected page
+      bottomNavigationBar: CustomBottomNavbar(
+        selectedIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+// Wrapper for ServicesScreen to include the bottom navigation bar
+class ServicesWrapper extends StatefulWidget {
+  @override
+  _ServicesWrapperState createState() => _ServicesWrapperState();
+}
+
+class _ServicesWrapperState extends State<ServicesWrapper> {
+  int _selectedIndex = 2;
+
+  final List<Widget> _pages = [
+    HomeScreen(),
+    ProductsScreen(),
+    ServicesScreen(),
+    CartScreen(),
+    ProfileScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex], // Display the selected page
+      bottomNavigationBar: CustomBottomNavbar(
+        selectedIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+// Wrapper for CartScreen to include the bottom navigation bar
+class CartWrapper extends StatefulWidget {
+  @override
+  _CartWrapperState createState() => _CartWrapperState();
+}
+
+class _CartWrapperState extends State<CartWrapper> {
+  int _selectedIndex = 3;
+
+  final List<Widget> _pages = [
+    HomeScreen(),
+    ProductsScreen(),
+    ServicesScreen(),
+    CartScreen(),
+    ProfileScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex], // Display the selected page
+      bottomNavigationBar: CustomBottomNavbar(
+        selectedIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+// Wrapper for ProfileScreen to include the bottom navigation bar
+class ProfileWrapper extends StatefulWidget {
+  @override
+  _ProfileWrapperState createState() => _ProfileWrapperState();
+}
+
+class _ProfileWrapperState extends State<ProfileWrapper> {
+  int _selectedIndex = 4;
+
+  final List<Widget> _pages = [
+    HomeScreen(),
+    ProductsScreen(),
+    ServicesScreen(),
+    CartScreen(),
+    ProfileScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex], // Display the selected page
+      bottomNavigationBar: CustomBottomNavbar(
+        selectedIndex: _selectedIndex,
+        onTap: _onItemTapped,
       ),
     );
   }

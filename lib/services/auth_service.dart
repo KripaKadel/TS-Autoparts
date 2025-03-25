@@ -4,8 +4,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ts_autoparts_app/models/user.dart'; // Import the User model
 
 class AuthService {
-  static const String baseUrl = 'http://192.168.1.71:8000/api';
-  //static const String baseUrl = 'http://10.0.2.2:8000/api';
+  //static const String baseUrl = 'http://192.168.1.64:8000/api';
+  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  //static const String baseUrl = 'http://192.168.18.153:8000/api';
 
   // Register a new user (no role field needed)
   Future<User?> registerUser(
