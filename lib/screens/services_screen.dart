@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:ts_autoparts_app/function/esewa.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart'; // For date formatting
-import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // For secure storage
-import 'payment_screen.dart'; // Import the PaymentScreen
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({Key? key}) : super(key: key);
@@ -17,15 +17,15 @@ class _ServicesScreenState extends State<ServicesScreen> {
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
   String selectedMechanic = "Select Mechanic";
-  int? selectedMechanicId; // To store the selected mechanic's ID
+  int? selectedMechanicId;
 
-  // Validation error states
   bool _isServiceTypeValid = true;
   bool _isDateValid = true;
   bool _isTimeValid = true;
   bool _isMechanicValid = true;
 
   final Color primaryColor = const Color(0xFF144FAB);
+  final double appointmentCharge = 500.0;
 
   List<String> serviceTypes = [
     "Oil Change",
@@ -34,19 +34,17 @@ class _ServicesScreenState extends State<ServicesScreen> {
     "Engine Tune-up",
     "Fluid Check"
   ];
-  List<Map<String, dynamic>> mechanics = []; // To store fetched mechanics
-
-  final FlutterSecureStorage _storage = const FlutterSecureStorage(); // Secure storage instance
+  List<Map<String, dynamic>> mechanics = [];
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
-    fetchMechanics(); // Fetch mechanics when the screen loads
+    fetchMechanics();
   }
 
-  // Fetch mechanics from the backend
   Future<void> fetchMechanics() async {
-    final url = Uri.parse('http://10.0.2.2:8000/api/mechanics'); // Replace with your backend URL
+    final url = Uri.parse('http://10.0.2.2:8000/api/mechanics');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -67,144 +65,114 @@ class _ServicesScreenState extends State<ServicesScreen> {
     }
   }
 
-  // Fetch the logged-in user's details
-  Future<Map<String, dynamic>> fetchUserDetails() async {
-    final token = await _storage.read(key: 'access_token'); // Fetch the token securely
-    print('Retrieved token: $token'); // Debug log
-
-    if (token == null) {
-      throw Exception('User is not logged in');
-    }
-
-    final url = Uri.parse('http://10.0.2.2:8000/api/user'); // Replace with your backend URL
-    try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      print('Response Status Code: ${response.statusCode}'); // Debug log
-      print('Response Body: ${response.body}'); // Debug log
-
-      if (response.statusCode == 200) {
-        final userDetails = json.decode(response.body);
-        if (userDetails['id'] == null) {
-          throw Exception('User ID not found in response');
-        }
-        return userDetails;
-      } else {
-        throw Exception('Failed to fetch user details: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Exception: $e'); // Debug log
-      throw Exception('Error fetching user details: $e');
-    }
-  }
-
-  // Validate and proceed to payment
-  void _proceedToPayment() {
-    // Reset validation errors
-    setState(() {
-      _isServiceTypeValid = serviceType != "Select Service Type";
-      _isDateValid = selectedDate != DateTime.now();
-      _isTimeValid = selectedTime != const TimeOfDay(hour: 9, minute: 0);
-      _isMechanicValid = selectedMechanicId != null;
-    });
-
-    // Check if all fields are valid
-    if (!_isServiceTypeValid || !_isDateValid || !_isTimeValid || !_isMechanicValid) {
+  void _showPaymentDialog() {
+    if (!_validateFields()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all required fields')),
       );
       return;
     }
 
-    // Navigate to PaymentScreen with appointment details
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaymentScreen(
-          serviceType: serviceType,
-          selectedDate: selectedDate,
-          selectedTime: selectedTime,
-          selectedMechanicId: selectedMechanicId!,
-          onPaymentSuccess: _storeAppointment, // Callback for payment success
-        ),
-      ),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Appointment Payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Appointment Charge:'),
+              const SizedBox(height: 8),
+              Text('Rs.$appointmentCharge', 
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[900],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Rs.$appointmentCharge', 
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[900],
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[900],
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+                _initiateEsewaPayment();
+              },
+              child: const Text('Pay with eSewa', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  // Store appointment in the backend
-  Future<void> _storeAppointment() async {
-    // Fetch the logged-in user's details
-    Map<String, dynamic> userDetails;
+  bool _validateFields() {
+    setState(() {
+      _isServiceTypeValid = serviceType != "Select Service Type";
+      _isDateValid = selectedDate != DateTime.now();
+      _isTimeValid = selectedTime != const TimeOfDay(hour: 9, minute: 0);
+      _isMechanicValid = selectedMechanic != "Select Mechanic";
+    });
+
+    return _isServiceTypeValid && _isDateValid && _isTimeValid && _isMechanicValid;
+  }
+
+  Future<void> _initiateEsewaPayment() async {
+    // Generate unique reference ID
+    final referenceId = "APPT-${DateTime.now().millisecondsSinceEpoch}";
+
     try {
-      userDetails = await fetchUserDetails();
-      print('User Details: $userDetails'); // Debug log
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching user details: $e')),
-      );
-      return;
-    }
-
-    final userId = userDetails['id']; // Get the user_id from the fetched details
-
-    // Prepare appointment data
-    final appointmentData = {
-      'user_id': userId, // Use the fetched user_id
-      'mechanic_id': selectedMechanicId,
-      'service_description': serviceType,
-      'appointment_date': DateFormat('yyyy-MM-dd').format(selectedDate),
-      'time': DateFormat('HH:mm').format(DateTime(
-        0, 0, 0, selectedTime.hour, selectedTime.minute
-      )), // 24-hour format
-      'status': 'pending',
-    };
-
-    // Debugging: Print the data being sent
-    print('Appointment Data: $appointmentData');
-
-    // Send data to the backend
-    final url = Uri.parse('http://10.0.2.2:8000/api/appointments'); // Replace with your backend URL
-    try {
-      final token = await _storage.read(key: 'access_token'); // Fetch the token securely
-
-      if (token == null) {
-        throw Exception('User is not logged in');
-      }
-
-      final response = await http.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token', // Include the token in the request
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(appointmentData),
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
       );
 
-      // Debugging: Print the response
-      print('Response Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      // Initialize eSewa payment using your existing Esewa class
+      final esewa = Esewa();
+      esewa.pay(); // This will trigger the payment flow
 
-      if (response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment booked successfully!')),
-        );
-        // Navigate back to home or another screen
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        final errorData = json.decode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${errorData['message']}')),
-        );
-      }
+      // Note: The actual success handling will be done in your Esewa class callbacks
+      // You'll need to modify the Esewa class to handle navigation/updates after verification
+
+      // For now, just close the loading indicator after a delay
+      Future.delayed(const Duration(seconds: 2), () {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      });
     } catch (e) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error creating appointment: $e')),
+        SnackBar(content: Text('Payment error: $e')),
       );
     }
   }
@@ -216,7 +184,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: const BackButton(color: Colors.black),
         title: const Text(
           'Appointment Booking',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
@@ -242,9 +209,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   ),
                   const SizedBox(height: 8),
                   GestureDetector(
-                    onTap: () {
-                      _showServiceTypeDialog();
-                    },
+                    onTap: _showServiceTypeDialog,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
@@ -300,9 +265,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     children: [
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
-                            _selectDate(context);
-                          },
+                          onTap: () => _selectDate(context),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
@@ -331,9 +294,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
-                            _selectTime(context);
-                          },
+                          onTap: () => _selectTime(context),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
@@ -389,9 +350,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   ),
                   const SizedBox(height: 8),
                   GestureDetector(
-                    onTap: () {
-                      _showMechanicDialog();
-                    },
+                    onTap: _showMechanicDialog,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
@@ -442,16 +401,17 @@ class _ServicesScreenState extends State<ServicesScreen> {
               const SizedBox(height: 15),
 
               // Summary details
-              buildSummaryRow('Service Type', serviceType),
-              buildSummaryRow('Date', DateFormat('MM/dd/yyyy').format(selectedDate)),
-              buildSummaryRow('Time', selectedTime.format(context)),
-              buildSummaryRow('Assigned Mechanic', selectedMechanic),
+              _buildSummaryRow('Service Type', serviceType),
+              _buildSummaryRow('Date', DateFormat('MM/dd/yyyy').format(selectedDate)),
+              _buildSummaryRow('Time', selectedTime.format(context)),
+              _buildSummaryRow('Assigned Mechanic', selectedMechanic),
+              _buildSummaryRow('Appointment Charge', 'Rs.$appointmentCharge'),
 
               const SizedBox(height: 40),
 
               // Payment Button
               ElevatedButton(
-                onPressed: _proceedToPayment, // Redirect to PaymentScreen
+                onPressed: _showPaymentDialog,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
@@ -461,16 +421,13 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   ),
                 ),
                 child: const Text(
-                  'Proceed to Payment',
+                  'Book Appointment',
                   style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () {
-                  // Navigate back to HomeWrapper when Cancel is clicked
-                  Navigator.pushReplacementNamed(context, '/home'); // Navigate to HomeWrapper route
-                },
+                onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: primaryColor),
                   minimumSize: const Size(double.infinity, 50),
@@ -491,7 +448,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     );
   }
 
-  Widget buildSummaryRow(String label, String value) {
+  Widget _buildSummaryRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -520,7 +477,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
     );
   }
 
-  // Show Service Type Dialog
   void _showServiceTypeDialog() {
     showDialog(
       context: context,
@@ -548,7 +504,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
     );
   }
 
-  // Show Mechanic Dialog
   void _showMechanicDialog() {
     showDialog(
       context: context,
@@ -564,7 +519,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   onTap: () {
                     setState(() {
                       selectedMechanic = mechanic['name'];
-                      selectedMechanicId = mechanic['id']; // Store mechanic's ID
+                      selectedMechanicId = mechanic['id'];
                     });
                     Navigator.pop(context);
                   },
@@ -577,12 +532,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
     );
   }
 
-  // Date Picker
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
-      firstDate: DateTime(2020),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2101),
     );
     if (picked != null && picked != selectedDate) {
@@ -592,7 +546,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
     }
   }
 
-  // Time Picker
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,

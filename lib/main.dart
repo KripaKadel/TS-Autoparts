@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:khalti/khalti.dart'; // Use khalti package
+ // Use khalti package
 import 'package:ts_autoparts_app/screens/home_screen.dart'; // Import Home page
 import 'package:ts_autoparts_app/screens/login_screen.dart'; // Import Login page
 import 'package:ts_autoparts_app/screens/profile_screen.dart'; // Import Profile page
@@ -10,10 +10,7 @@ import 'package:ts_autoparts_app/screens/cart_screen.dart'; // Import Cart page
 import 'package:ts_autoparts_app/components/navbar.dart'; // Import the custom bottom navbar
 
 void main() {
-  // Initialize Khalti SDK with your public key
-  Khalti.init(
-    publicKey: 'e3ae01975125486f96a9b3e8e29077e2', // Your Khalti public key
-  );
+  
 
   runApp(MyApp());
 }

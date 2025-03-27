@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:ts_autoparts_app/utils/secure_storage.dart'; // Import the SecureStorage class
 
 class ProductDescriptionPage extends StatefulWidget {
   final Product product;
@@ -13,15 +14,32 @@ class ProductDescriptionPage extends StatefulWidget {
 
 class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
   int quantity = 1;
-  // Dummy rating value
   final double rating = 3.4;
 
+  // Method to add product to cart
   Future<void> addToCart(Product product, int quantity) async {
-    final url = Uri.parse('https://10.0.2.2:8000/api/cart/add');
+    // Retrieve the token from secure storage
+    String? token = await SecureStorage.getToken();
+
+    if (token == null) {
+      // If token is null, show error
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Authentication failed. Please login first.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    final url = Uri.parse('http://10.0.2.2:8000/api/cart/add');
+    
+    // Debug log for the request
+    print("Adding product to cart: product_id=${product.id}, quantity=$quantity");
+
     final response = await http.post(
       url,
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // Add token to Authorization header
       },
       body: jsonEncode(<String, dynamic>{
         'product_id': product.id,
@@ -29,16 +47,21 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
       }),
     );
 
+    // Handle the response
     if (response.statusCode == 200) {
-      // Product added to cart successfully
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Product added to cart!')),
-      );
+      // Success message
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Added to Cart Successfully!'),
+        backgroundColor: Colors.green,
+      ));
+      print("Product added to cart successfully!");
     } else {
-      // Handle error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add product to cart!')),
-      );
+      // Failure message
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to add product to cart!'),
+        backgroundColor: Colors.red,
+      ));
+      print("Failed to add product to cart. Error: ${response.statusCode}");
     }
   }
 
@@ -117,8 +140,7 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ],
                   ),
                   SizedBox(height: 12),
-                  
-                  // Price
+                   // Price
                   Text(
                     'Rs. ${widget.product.price.toStringAsFixed(0)}',
                     style: TextStyle(
@@ -128,7 +150,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ),
                   ),
                   SizedBox(height: 8),
-                  
                   // Brand
                   Text(
                     'Brand: ${widget.product.brand}',
@@ -138,17 +159,15 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ),
                   ),
                   SizedBox(height: 12),
-                  
                   // Product Description
                   Text(
-                    widget.product.description ?? 'The Wheel Cylinder for 2000-2010 Ford Mustang (Rear, Left/Right) is a high-quality, durable replacement part designed to restore optimal braking performance.',
+                    widget.product.description ?? 'Product description unavailable.',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
                     ),
                   ),
                   SizedBox(height: 24),
-                  
                   // Quantity Selector
                   Row(
                     children: [
@@ -210,7 +229,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ],
                   ),
                   SizedBox(height: 24),
-                  
                   // Add to Cart Button
                   SizedBox(
                     width: double.infinity,
