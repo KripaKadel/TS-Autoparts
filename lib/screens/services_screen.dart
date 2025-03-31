@@ -18,6 +18,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
   String selectedMechanic = "Select Mechanic";
   int? selectedMechanicId;
+  bool isLoading = false;
 
   bool _isServiceTypeValid = true;
   bool _isDateValid = true;
@@ -44,6 +45,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   Future<void> fetchMechanics() async {
+    setState(() {
+      isLoading = true;
+    });
+    
     final url = Uri.parse('http://10.0.2.2:8000/api/mechanics');
     try {
       final response = await http.get(url);
@@ -54,11 +59,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
             'id': mechanic['id'],
             'name': mechanic['name'],
           }).toList();
+          isLoading = false;
         });
       } else {
+        setState(() {
+          isLoading = false;
+        });
         throw Exception('Failed to load mechanics: ${response.statusCode}');
       }
     } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching mechanics: $e')),
       );
@@ -141,40 +153,118 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   Future<void> _initiateEsewaPayment() async {
-    // Generate unique reference ID
-    final referenceId = "APPT-${DateTime.now().millisecondsSinceEpoch}";
+    if (!_validateFields()) return;
+
+    setState(() {
+      isLoading = true;
+    });
 
     try {
-      // Show loading indicator
-      showDialog(
+      final esewa = Esewa(
         context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        productName: "Service Appointment: $serviceType",
+        amount: appointmentCharge,
+        onSuccess: () async {
+          // Payment successful - create appointment
+          await _createAppointment();
+          setState(() {
+            isLoading = false;
+          });
+          _showSuccessDialog();
+        },
+        onFailure: () {
+          setState(() {
+            isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment failed. Please try again.')),
+          );
+        },
+        onCancel: () {
+          setState(() {
+            isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment cancelled.')),
+          );
+        },
       );
 
-      // Initialize eSewa payment using your existing Esewa class
-      final esewa = Esewa();
-      esewa.pay(); // This will trigger the payment flow
-
-      // Note: The actual success handling will be done in your Esewa class callbacks
-      // You'll need to modify the Esewa class to handle navigation/updates after verification
-
-      // For now, just close the loading indicator after a delay
-      Future.delayed(const Duration(seconds: 2), () {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-      });
+      esewa.pay();
     } catch (e) {
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
+      setState(() {
+        isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment error: $e')),
+        SnackBar(content: Text('Error processing payment: $e')),
       );
     }
+  }
+
+  Future<void> _createAppointment() async {
+    try {
+      final token = await _storage.read(key: 'auth_token');
+      final url = Uri.parse('http://10.0.2.2:8000/api/appointments');
+      
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'service_type': serviceType,
+          'appointment_date': DateFormat('yyyy-MM-dd').format(selectedDate),
+          'appointment_time': '${selectedTime.hour}:${selectedTime.minute}',
+          'mechanic_id': selectedMechanicId,
+          'amount': appointmentCharge,
+          'status': 'confirmed',
+        }),
+      );
+
+      if (response.statusCode != 201) {
+        throw Exception('Failed to create appointment');
+      }
+    } catch (e) {
+      throw Exception('Error creating appointment: $e');
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Appointment Booked!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 60),
+              const SizedBox(height: 20),
+              Text(
+                'Your appointment for $serviceType has been successfully booked.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Date: ${DateFormat('MMM dd, yyyy').format(selectedDate)} at ${selectedTime.format(context)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Text('Done'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -190,260 +280,271 @@ class _ServicesScreenState extends State<ServicesScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Service Type
-              Column(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Service Type',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: _showServiceTypeDialog,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F7FA),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: _isServiceTypeValid ? Colors.transparent : Colors.red,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            serviceType,
-                            style: TextStyle(
-                              color: serviceType == "Select Service Type" ? Colors.grey : Colors.black,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (!_isServiceTypeValid)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Please select a service type',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Select Time Slot
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Select Time Slot',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+                  // Service Type
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _selectDate(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F7FA),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: _isDateValid ? Colors.transparent : Colors.red,
-                              ),
+                      const Text(
+                        'Service Type',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _showServiceTypeDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F7FA),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isServiceTypeValid ? Colors.transparent : Colors.red,
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  DateFormat('MM/dd/yyyy').format(selectedDate),
-                                  style: TextStyle(
-                                    color: selectedDate == DateTime.now() ? Colors.grey : Colors.black,
-                                    fontSize: 16,
-                                  ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                serviceType,
+                                style: TextStyle(
+                                  color: serviceType == "Select Service Type" ? Colors.grey : Colors.black,
+                                  fontSize: 16,
                                 ),
-                                const Icon(Icons.calendar_today, color: Colors.grey, size: 20),
-                              ],
-                            ),
+                              ),
+                              const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _selectTime(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F7FA),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: _isTimeValid ? Colors.transparent : Colors.red,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  selectedTime.format(context),
-                                  style: TextStyle(
-                                    color: selectedTime == const TimeOfDay(hour: 9, minute: 0) ? Colors.grey : Colors.black,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const Icon(Icons.access_time, color: Colors.grey),
-                              ],
+                      if (!_isServiceTypeValid)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Please select a service type',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
-                  if (!_isDateValid || !_isTimeValid)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Please select a valid date and time',
+                  const SizedBox(height: 20),
+
+                  // Select Time Slot
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select Time Slot',
                         style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 20),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => _selectDate(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F7FA),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: _isDateValid ? Colors.transparent : Colors.red,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      DateFormat('MM/dd/yyyy').format(selectedDate),
+                                      style: TextStyle(
+                                        color: selectedDate == DateTime.now() ? Colors.grey : Colors.black,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const Icon(Icons.calendar_today, color: Colors.grey, size: 20),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => _selectTime(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F7FA),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: _isTimeValid ? Colors.transparent : Colors.red,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      selectedTime.format(context),
+                                      style: TextStyle(
+                                        color: selectedTime == const TimeOfDay(hour: 9, minute: 0) ? Colors.grey : Colors.black,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const Icon(Icons.access_time, color: Colors.grey),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!_isDateValid || !_isTimeValid)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Please select a valid date and time',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
-              // Assigned Mechanic
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                  // Assigned Mechanic
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Assigned Mechanic',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _showMechanicDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F7FA),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isMechanicValid ? Colors.transparent : Colors.red,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                selectedMechanic,
+                                style: TextStyle(
+                                  color: selectedMechanic == "Select Mechanic" ? Colors.grey : Colors.black,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (!_isMechanicValid)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Please select a mechanic',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Summary
                   const Text(
-                    'Assigned Mechanic',
+                    'Summary',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: _showMechanicDialog,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F7FA),
+                  const SizedBox(height: 15),
+
+                  // Summary details
+                  _buildSummaryRow('Service Type', serviceType),
+                  _buildSummaryRow('Date', DateFormat('MM/dd/yyyy').format(selectedDate)),
+                  _buildSummaryRow('Time', selectedTime.format(context)),
+                  _buildSummaryRow('Assigned Mechanic', selectedMechanic),
+                  _buildSummaryRow('Appointment Charge', 'Rs.$appointmentCharge'),
+
+                  const SizedBox(height: 40),
+
+                  // Payment Button
+                  ElevatedButton(
+                    onPressed: _showPaymentDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: _isMechanicValid ? Colors.transparent : Colors.red,
-                        ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            selectedMechanic,
-                            style: TextStyle(
-                              color: selectedMechanic == "Select Mechanic" ? Colors.grey : Colors.black,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                        ],
-                      ),
+                    ),
+                    child: const Text(
+                      'Book Appointment',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
-                  if (!_isMechanicValid)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Please select a mechanic',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                        ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: primaryColor),
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(fontSize: 16, color: primaryColor),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
-              const SizedBox(height: 30),
-
-              // Summary
-              const Text(
-                'Summary',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 15),
-
-              // Summary details
-              _buildSummaryRow('Service Type', serviceType),
-              _buildSummaryRow('Date', DateFormat('MM/dd/yyyy').format(selectedDate)),
-              _buildSummaryRow('Time', selectedTime.format(context)),
-              _buildSummaryRow('Assigned Mechanic', selectedMechanic),
-              _buildSummaryRow('Appointment Charge', 'Rs.$appointmentCharge'),
-
-              const SizedBox(height: 40),
-
-              // Payment Button
-              ElevatedButton(
-                onPressed: _showPaymentDialog,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Book Appointment',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: primaryColor),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(fontSize: 16, color: primaryColor),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
+          if (isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -505,6 +606,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   void _showMechanicDialog() {
+    if (mechanics.isEmpty) return;
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {

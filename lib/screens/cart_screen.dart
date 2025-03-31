@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:ts_autoparts_app/models/cart.dart';
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
+import 'package:ts_autoparts_app/function/esewa.dart';
 
 class CartScreen extends StatefulWidget {
   @override
@@ -13,6 +14,7 @@ class _CartScreenState extends State<CartScreen> {
   List<CartItem> cartItems = [];
   bool isLoading = true;
   double totalAmount = 0.0;
+  final Color primaryColor = const Color(0xFF144FAB);
 
   @override
   void initState() {
@@ -85,7 +87,6 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     final url = Uri.parse('http://10.0.2.2:8000/api/cart/update-quantity');
-
     final response = await http.post(
       url,
       headers: {
@@ -118,7 +119,6 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     final url = Uri.parse('http://10.0.2.2:8000/api/cart/remove');
-
     final response = await http.post(
       url,
       headers: {
@@ -137,36 +137,169 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  // Method to show the eSewa payment pop-up
   void _showPaymentDialog() {
+    if (cartItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your cart is empty!')),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Pay with eSewa'),
-          content: Text('Do you want to proceed with the payment using eSewa?'),
+          title: const Text('Cart Payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Total Amount:'),
+              const SizedBox(height: 8),
+              Text('Rs.${totalAmount.toStringAsFixed(2)}', 
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[900],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Rs.${totalAmount.toStringAsFixed(2)}', 
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[900],
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text('Cancel'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[900],
+              ),
               onPressed: () {
-                // Add your eSewa payment integration here
-                Navigator.of(context).pop(); // Close the dialog
-                // Show a confirmation message or navigate to payment screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Payment initiated with eSewa')),
-                );
+                Navigator.pop(context);
+                _initiateEsewaPayment();
               },
-              child: Text('Pay via eSewa'),
+              child: const Text('Pay with eSewa', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _initiateEsewaPayment() async {
+    final referenceId = "CART-${DateTime.now().millisecondsSinceEpoch}";
+    
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      Esewa(
+        context: context,
+        productName: 'Cart Checkout - ${cartItems.length} items',
+        amount: totalAmount,
+        onSuccess: () {
+          Navigator.of(context).pop(); // Close loading
+          _handleSuccessfulPayment(referenceId);
+        },
+        onFailure: () {
+          Navigator.of(context).pop(); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment failed. Please try again.')),
+          );
+        },
+        onCancel: () {
+          Navigator.of(context).pop(); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment cancelled')),
+          );
+        },
+      ).pay();
+    } catch (e) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment error: $e')),
+      );
+    }
+  }
+
+  Future<void> _handleSuccessfulPayment(String referenceId) async {
+    try {
+      // Process order in your backend
+      final token = await SecureStorage.getToken();
+      final url = Uri.parse('http://10.0.2.2:8000/api/orders');
+      
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'items': cartItems.map((item) => {
+            'product_id': item.product.id,
+            'quantity': item.quantity,
+            'price': item.product.price,
+          }).toList(),
+          'payment_reference': referenceId,
+          'total_amount': totalAmount,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        // Clear cart on success
+        await _clearCart();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Order placed successfully!')),
+        );
+        Navigator.of(context).pop(); // Close the screen
+      } else {
+        throw Exception('Failed to process order');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error processing order: $e')),
+      );
+    }
+  }
+
+  Future<void> _clearCart() async {
+    final token = await SecureStorage.getToken();
+    final url = Uri.parse('http://10.0.2.2:8000/api/cart/clear');
+    
+    await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    
+    setState(() {
+      cartItems.clear();
+      totalAmount = 0.0;
+    });
   }
 
   @override
@@ -184,7 +317,7 @@ class _CartScreenState extends State<CartScreen> {
           'My Cart',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
-        centerTitle: true, // Centers the "My Cart" title
+        centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -309,7 +442,7 @@ class _CartScreenState extends State<CartScreen> {
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 18, // Total font size set to 18
+                                  fontSize: 18,
                                 ),
                               ),
                               Row(
@@ -338,9 +471,7 @@ class _CartScreenState extends State<CartScreen> {
                           ElevatedButton(
                             onPressed: cartItems.isEmpty 
                                 ? null 
-                                : () {
-                                    _showPaymentDialog(); // Show the payment dialog
-                                  },
+                                : _showPaymentDialog,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue[900],
                               minimumSize: Size(double.infinity, 50),
