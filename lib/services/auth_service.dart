@@ -81,6 +81,12 @@ class AuthService {
     }
   }
 
+
+  Future<String?> getCurrentToken() async {
+  final storage = FlutterSecureStorage();
+  return await storage.read(key: 'access_token');
+}
+
   // Logout the user
   Future<bool> logoutUser() async {
     final storage = FlutterSecureStorage();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/function/esewa.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -13,6 +13,7 @@ class ServicesScreen extends StatefulWidget {
 }
 
 class _ServicesScreenState extends State<ServicesScreen> {
+  final AuthService _authService = AuthService();
   String serviceType = "Select Service Type";
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
@@ -36,22 +37,32 @@ class _ServicesScreenState extends State<ServicesScreen> {
     "Fluid Check"
   ];
   List<Map<String, dynamic>> mechanics = [];
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
-    fetchMechanics();
+    _checkAuthAndFetchMechanics();
+  }
+
+  Future<void> _checkAuthAndFetchMechanics() async {
+    final user = await _authService.getAuthenticatedUser();
+    if (user == null) {
+      _redirectToLogin();
+      return;
+    }
+    await fetchMechanics();
   }
 
   Future<void> fetchMechanics() async {
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
     
-    final url = Uri.parse('http://10.0.2.2:8000/api/mechanics');
     try {
-      final response = await http.get(url);
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse('${AuthService.baseUrl}/mechanics'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
@@ -59,21 +70,36 @@ class _ServicesScreenState extends State<ServicesScreen> {
             'id': mechanic['id'],
             'name': mechanic['name'],
           }).toList();
-          isLoading = false;
         });
       } else {
-        setState(() {
-          isLoading = false;
-        });
         throw Exception('Failed to load mechanics: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching mechanics: $e')),
-      );
+      _handleError(e);
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<String> _getToken() async {
+    final token = await _authService.getCurrentToken();
+    if (token == null) {
+      _redirectToLogin();
+      throw Exception('Not authenticated');
+    }
+    return token;
+  }
+
+  void _redirectToLogin() {
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  void _handleError(dynamic e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${e.toString()}')),
+    );
+    if (e.toString().contains('authenticated')) {
+      _redirectToLogin();
     }
   }
 
@@ -155,9 +181,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Future<void> _initiateEsewaPayment() async {
     if (!_validateFields()) return;
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
       final esewa = Esewa(
@@ -165,25 +189,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
         productName: "Service Appointment: $serviceType",
         amount: appointmentCharge,
         onSuccess: () async {
-          // Payment successful - create appointment
           await _createAppointment();
-          setState(() {
-            isLoading = false;
-          });
+          setState(() => isLoading = false);
           _showSuccessDialog();
         },
         onFailure: () {
-          setState(() {
-            isLoading = false;
-          });
+          setState(() => isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Payment failed. Please try again.')),
           );
         },
         onCancel: () {
-          setState(() {
-            isLoading = false;
-          });
+          setState(() => isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Payment cancelled.')),
           );
@@ -192,41 +209,49 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
       esewa.pay();
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error processing payment: $e')),
-      );
+      setState(() => isLoading = false);
+      _handleError(e);
     }
   }
 
   Future<void> _createAppointment() async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-      final url = Uri.parse('http://10.0.2.2:8000/api/appointments');
+      setState(() => isLoading = true);
       
+      final user = await _authService.getAuthenticatedUser();
+      if (user == null) {
+        _redirectToLogin();
+        return;
+      }
+
+      final token = await _getToken();
+      final formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:'
+                          '${selectedTime.minute.toString().padLeft(2, '0')}';
+
       final response = await http.post(
-        url,
+        Uri.parse('${AuthService.baseUrl}/appointments'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: json.encode({
-          'service_type': serviceType,
-          'appointment_date': DateFormat('yyyy-MM-dd').format(selectedDate),
-          'appointment_time': '${selectedTime.hour}:${selectedTime.minute}',
+          'user_id': user.id,
           'mechanic_id': selectedMechanicId,
-          'amount': appointmentCharge,
+          'service_description': serviceType,
+          'appointment_date': DateFormat('yyyy-MM-dd').format(selectedDate),
+          'time': formattedTime,
           'status': 'confirmed',
+          'amount': appointmentCharge,
         }),
       );
 
       if (response.statusCode != 201) {
-        throw Exception('Failed to create appointment');
+        throw Exception('Failed to create appointment: ${response.body}');
       }
     } catch (e) {
-      throw Exception('Error creating appointment: $e');
+      _handleError(e);
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 
@@ -266,6 +291,15 @@ class _ServicesScreenState extends State<ServicesScreen> {
       },
     );
   }
+
+  // ... [Keep all your existing UI methods unchanged]
+  // This includes:
+  // - build() method with all UI components
+  // - _buildSummaryRow()
+  // - _showServiceTypeDialog()
+  // - _showMechanicDialog()
+  // - _selectDate()
+  // - _selectTime()
 
   @override
   Widget build(BuildContext context) {

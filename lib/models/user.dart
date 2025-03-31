@@ -1,10 +1,12 @@
 class User {
+  final int id;
   final String name;
   final String email;
   final String phoneNumber;
   final String accessToken;
 
   User({
+    required this.id,
     required this.name,
     required this.email,
     required this.phoneNumber,
@@ -12,12 +14,20 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    // Safely access the keys to prevent null errors
     return User(
-      name: json['user']?['name'] ?? 'Unknown', // Provide default if null or missing
-      email: json['user']?['email'] ?? 'No email provided', // Default if null
-      phoneNumber: json['user']?['phone_number'] ?? 'No phone number provided', // Default if null
-      accessToken: json['access_token'] ?? 'No token available', // Default if missing or null
+      id: json['user']?['id'] ?? json['id'] ?? 0, // Handles both nested and flat structures
+      name: json['user']?['name'] ?? json['name'] ?? 'Unknown',
+      email: json['user']?['email'] ?? json['email'] ?? '',
+      phoneNumber: json['user']?['phone_number'] ?? json['phone_number'] ?? '',
+      accessToken: json['access_token'] ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'phone_number': phoneNumber,
+    'access_token': accessToken,
+  };
 }
