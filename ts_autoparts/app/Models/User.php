@@ -6,12 +6,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-
-class User extends Authenticatable
+use Illuminate\Contracts\Auth\MustVerifyEmail; // Import MustVerifyEmail interface
+use App\Notifications\VerifyEmail;
+class User extends Authenticatable implements MustVerifyEmail // Implement MustVerifyEmail
 {
     use HasFactory, HasApiTokens, Notifiable;
 
     protected $table = 'users';
+
+    
 
     protected $fillable = [
         'name', 
@@ -31,6 +34,10 @@ class User extends Authenticatable
     const ROLE_CUSTOMER = 'customer';
     const ROLE_MECHANIC = 'mechanic';
 
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new VerifyEmail());
+    }
     // Your existing methods remain the same
     public function scopeAdmins($query)
     {
@@ -50,7 +57,7 @@ class User extends Authenticatable
     // Your relationships remain the same
     public function orders()
     {
-        return $this->hasMany(orders::class);
+        return $this->hasMany(Order::class);
     }
 
     public function appointments()
@@ -60,7 +67,7 @@ class User extends Authenticatable
 
     public function reviews()
     {
-        return $this->hasMany(reviews::class);
+        return $this->hasMany(Reviews::class);
     }
 
     public function cart()
@@ -72,4 +79,6 @@ class User extends Authenticatable
     {
         return $this->hasMany(Payments::class);
     }
+
+    
 }

@@ -3,10 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\ProductController; // Add ProductController for product management
 use App\Http\Controllers\UserController; // Add UserController for user management
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\Mail;
 // Route for showing the admin login form
 Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
 
@@ -64,5 +65,26 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update/{id}', [UserController::class, 'update'])->name('update'); // Update user
         Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('destroy'); // Delete user
     });
+
+    Route::get('test-email', function () {
+        Mail::raw('Test email', function ($message) {
+            $message->to('test@example.com')
+                    ->subject('Test Email');
+        });
+    
+        return 'Test email sent!';
+    });
+
+    Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])
+    ->name('verification.verify');
+
+Route::get('/verify-redirect/{id}', function ($id) {
+    return redirect()->away(
+        config('app.deep_link_scheme').'://verify?'.http_build_query([
+            'user_id' => $id,
+            'verified' => true
+        ])
+    );
+})->name('verification.redirect');
 });
 

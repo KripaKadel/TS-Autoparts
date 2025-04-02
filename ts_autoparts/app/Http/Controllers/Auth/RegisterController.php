@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Auth\Events\Registered;  // Import the Registered event
 
 class RegisterController extends Controller
 {
@@ -41,9 +42,12 @@ class RegisterController extends Controller
             'profile_image' => $profileImagePath,
         ]);
 
+        // Fire the Registered event to send the verification email
+        event(new Registered($user));  // This triggers the verification email to be sent.
+
         // Return success response with the created user and status
         return response()->json([
-            'message' => 'User registered successfully',
+            'message' => 'User registered successfully. Please verify your email.',
             'user' => $user
         ], 201);
     }

@@ -1,5 +1,4 @@
 <?php
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -11,6 +10,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\Auth\VerificationController; // Import Verification Controller
 
 // Authentication Routes
 Route::post('/register', [RegisterController::class, 'register']);
@@ -26,6 +26,12 @@ Route::get('/mechanics', [AppointmentController::class, 'getMechanics']);
 Route::post('/appointments', [AppointmentController::class, 'store']);
 Route::get('/products', [ProductController::class, 'apiIndex']);
 Route::get('/categories', [CategoryController::class, 'index']);
+
+// Email Verification Routes (Added)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('email/verify', [VerificationController::class, 'show'])->name('verification.notice');
+    Route::get('email/verify/{id}/{hash}', [VerificationController::class, 'verify'])->name('verification.verify');
+});
 
 // Authenticated Routes
 Route::middleware('auth:sanctum')->group(function () {
