@@ -10,7 +10,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- Main Activity -->
+        <!-- Main Activity with Deep Linking -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -21,6 +21,7 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             
+            <!-- Flutter Deep Linking Meta -->
             <meta-data 
                 android:name="flutter_deeplinking_enabled" 
                 android:value="true" />
@@ -29,13 +30,27 @@
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
                 
+            <!-- Launcher Intent -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Deep Link for Email Verification -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Custom scheme for your app -->
+                <data android:scheme="tsautoparts" android:host="verify" />
+                <!-- Optional: Add HTTPS support for universal links -->
+                <data android:scheme="https"
+                      android:host="yourdomain.com"
+                      android:pathPrefix="/verify-email" />
+            </intent-filter>
         </activity>
 
-        <!-- Single Combined eSewa Payment Activity Configuration -->
+        <!-- eSewa Payment Activity (Keep Existing) -->
         <activity
             android:name="com.esewa.android.sdk.payment.ESewaPaymentActivity"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"

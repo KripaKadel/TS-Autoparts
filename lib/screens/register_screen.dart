@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/screens/home_screen.dart';
 import 'package:ts_autoparts_app/screens/login_screen.dart';
+import 'package:ts_autoparts_app/screens/verifyemail_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,7 +14,9 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final AuthService authService = AuthService();
+  final _formKey = GlobalKey<FormState>();
 
+  // [Keep all your existing controllers and variables]
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
@@ -25,22 +28,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool agreeToTerms = false;
   bool isLoading = false;
 
-  // Focus nodes to manage focus between text fields
+  // Focus nodes
   FocusNode fullNameFocusNode = FocusNode();
   FocusNode emailFocusNode = FocusNode();
   FocusNode phoneFocusNode = FocusNode();
   FocusNode passwordFocusNode = FocusNode();
   FocusNode confirmPasswordFocusNode = FocusNode();
 
-  void registerUser() async {
+  Future<void> registerUser() async {
+    if (!_formKey.currentState!.validate()) return;
     if (passwordController.text != confirmPasswordController.text) {
       _showDialog("Error", "Passwords do not match!");
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
       final user = await authService.registerUser(
@@ -52,22 +54,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (user != null) {
-        _showDialog("Success", "Registration successful! Welcome, ${user.name}!", isSuccess: true);
+        if (user.isVerified) {
+          // If email is already verified (unlikely during registration)
+          _showDialog("Success", "Registration successful! Welcome, ${user.name}!", 
+            isSuccess: true,
+            route: HomeScreen(),
+          );
+        } else {
+          // Navigate to verification screen with proper parameters
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VerifyEmailScreen(
+                email: user.email,
+                userId: user.id.toString(),
+                verificationHash: user.verificationHash ?? '',
+              ),
+            ),
+          );
+        }
         _clearFields();
-
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        _showDialog("Error", "Registration failed. Please try again.");
       }
     } catch (e) {
-      _showDialog("Error", "An error occurred: $e");
+      _showDialog("Error", e.toString());
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
+  // [Keep all your existing helper methods]
   void _clearFields() {
     fullNameController.clear();
     emailController.clear();
@@ -76,7 +91,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     confirmPasswordController.clear();
   }
 
-  void _showDialog(String title, String message, {bool isSuccess = false}) {
+  void _showDialog(String title, String message, {
+    bool isSuccess = false, 
+    Widget? route,
+  }) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -86,14 +104,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              if (isSuccess) {
+              if (isSuccess && route != null) {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => HomeScreen()),
+                  MaterialPageRoute(builder: (context) => route),
                 );
               }
             },
-            child: Text("OK"),
+            child: const Text("OK"),
           ),
         ],
       ),
@@ -113,10 +131,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF144FAB),
+      backgroundColor: const Color(0xFF144FAB),
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Logo Section
             Container(
               width: double.infinity,
               height: 300,
@@ -124,18 +143,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: 50),
+                  const SizedBox(height: 50),
                   SvgPicture.asset(
                     'assets/images/Logo.svg',
                     height: 110,
                     width: 100,
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
+            
+            // Form Section
             Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(30),
@@ -151,164 +172,167 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Create Account",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    // Full Name
-                    _buildTextField(
-                      controller: fullNameController,
-                      hintText: "Full Name",
-                      suffixIcon: Icon(Icons.person, color: Color(0xFF7A879C)), // Updated icon color
-                      textInputAction: TextInputAction.next,
-                      focusNode: fullNameFocusNode,
-                      nextFocusNode: emailFocusNode,
-                    ),
-                    SizedBox(height: 10),
-
-                    // Email
-                    _buildTextField(
-                      controller: emailController,
-                      hintText: "Email",
-                      suffixIcon: Icon(Icons.email, color: Color(0xFF7A879C)), // Updated icon color
-                      textInputAction: TextInputAction.next,
-                      focusNode: emailFocusNode,
-                      nextFocusNode: phoneFocusNode,
-                    ),
-                    SizedBox(height: 10),
-
-                    // Phone Number
-                    _buildTextField(
-                      controller: phoneController,
-                      hintText: "Phone No",
-                      suffixIcon: Icon(Icons.phone, color: Color(0xFF7A879C)), // Updated icon color
-                      textInputAction: TextInputAction.next,
-                      focusNode: phoneFocusNode,
-                      nextFocusNode: passwordFocusNode,
-                    ),
-                    SizedBox(height: 10),
-
-                    // Password
-                    _buildTextField(
-                      controller: passwordController,
-                      hintText: "Password",
-                      obscureText: !isPasswordVisible,
-                      textInputAction: TextInputAction.next,
-                      suffixIcon: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            isPasswordVisible = !isPasswordVisible;
-                          });
-                        },
-                        child: Icon(
-                          isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                          color: Color(0xFF7A879C), // Updated icon color
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Create Account",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
-                      focusNode: passwordFocusNode,
-                      nextFocusNode: confirmPasswordFocusNode,
-                    ),
-                    SizedBox(height: 10),
-
-                    // Confirm Password
-                    _buildTextField(
-                      controller: confirmPasswordController,
-                      hintText: "Confirm Password",
-                      obscureText: !isConfirmPasswordVisible,
-                      textInputAction: TextInputAction.done,
-                      suffixIcon: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            isConfirmPasswordVisible = !isConfirmPasswordVisible;
-                          });
-                        },
-                        child: Icon(
-                          isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                          color: Color(0xFF7A879C), // Updated icon color
-                        ),
+                      const SizedBox(height: 20),
+                      
+                      // Full Name
+                      _buildTextField(
+                        controller: fullNameController,
+                        hintText: "Full Name",
+                        validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
+                        suffixIcon: const Icon(Icons.person, color: Color(0xFF7A879C)),
+                        textInputAction: TextInputAction.next,
+                        focusNode: fullNameFocusNode,
+                        nextFocusNode: emailFocusNode,
                       ),
-                      focusNode: confirmPasswordFocusNode,
-                      nextFocusNode: FocusNode(),
-                    ),
-                    SizedBox(height: 20),
+                      const SizedBox(height: 10),
 
-                    // Terms and conditions checkbox
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: agreeToTerms,
-                          onChanged: (value) {
-                            setState(() {
-                              agreeToTerms = value!;
-                            });
-                          },
-                        ),
-                        Text("I agree with "),
-                        GestureDetector(
-                          onTap: () {},
-                          child: Text(
-                            "Terms & Conditions",
-                            style: TextStyle(
-                              color: Color(0xFF144FAB),
-                              fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
-                            ),
+                      // Email
+                      _buildTextField(
+                        controller: emailController,
+                        hintText: "Email",
+                        validator: (value) => 
+                            value!.isEmpty ? 'Please enter your email' :
+                            !value.contains('@') ? 'Enter a valid email' : null,
+                        suffixIcon: const Icon(Icons.email, color: Color(0xFF7A879C)),
+                        textInputAction: TextInputAction.next,
+                        focusNode: emailFocusNode,
+                        nextFocusNode: phoneFocusNode,
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Phone Number
+                      _buildTextField(
+                        controller: phoneController,
+                        hintText: "Phone No",
+                        validator: (value) => 
+                            value!.isEmpty ? 'Please enter your phone number' :
+                            value.length < 10 ? 'Enter a valid phone number' : null,
+                        suffixIcon: const Icon(Icons.phone, color: Color(0xFF7A879C)),
+                        textInputAction: TextInputAction.next,
+                        focusNode: phoneFocusNode,
+                        nextFocusNode: passwordFocusNode,
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Password
+                      _buildTextField(
+                        controller: passwordController,
+                        hintText: "Password",
+                        obscureText: !isPasswordVisible,
+                        validator: (value) => 
+                            value!.isEmpty ? 'Please enter password' :
+                            value.length < 8 ? 'Password must be at least 8 characters' : null,
+                        textInputAction: TextInputAction.next,
+                        suffixIcon: GestureDetector(
+                          onTap: () => setState(() => isPasswordVisible = !isPasswordVisible),
+                          child: Icon(
+                            isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                            color: const Color(0xFF7A879C),
                           ),
                         ),
-                      ],
-                    ),
-                    SizedBox(height: 10),
+                        focusNode: passwordFocusNode,
+                        nextFocusNode: confirmPasswordFocusNode,
+                      ),
+                      const SizedBox(height: 10),
 
-                    // Register Button with border radius 6
-                    isLoading
-                        ? CircularProgressIndicator()
-                        : ElevatedButton(
-                            onPressed: agreeToTerms ? registerUser : null,
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: Size(double.infinity, 50),
-                              backgroundColor: agreeToTerms
-                                  ? const Color(0xFF144FAB)
-                                  : Colors.grey,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                      // Confirm Password
+                      _buildTextField(
+                        controller: confirmPasswordController,
+                        hintText: "Confirm Password",
+                        obscureText: !isConfirmPasswordVisible,
+                        validator: (value) => 
+                            value!.isEmpty ? 'Please confirm password' :
+                            value != passwordController.text ? 'Passwords do not match' : null,
+                        textInputAction: TextInputAction.done,
+                        suffixIcon: GestureDetector(
+                          onTap: () => setState(() => isConfirmPasswordVisible = !isConfirmPasswordVisible),
+                          child: Icon(
+                            isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                            color: const Color(0xFF7A879C),
+                          ),
+                        ),
+                        focusNode: confirmPasswordFocusNode,
+                        nextFocusNode: FocusNode(),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Terms and conditions checkbox
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: agreeToTerms,
+                            onChanged: (value) => setState(() => agreeToTerms = value!),
+                          ),
+                          const Text("I agree with "),
+                          GestureDetector(
+                            onTap: () {}, // Add terms screen navigation
+                            child: const Text(
+                              "Terms & Conditions",
+                              style: TextStyle(
+                                color: Color(0xFF144FAB),
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
                               ),
                             ),
-                            child: Text("Register"),
                           ),
-                    SizedBox(height: 65),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
 
-                    // Already have an account? Login Text
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("Already have an account? "),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushReplacement(
+                      // Register Button
+                      isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ElevatedButton(
+                              onPressed: agreeToTerms ? registerUser : null,
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 50),
+                                backgroundColor: agreeToTerms
+                                    ? const Color(0xFF144FAB)
+                                    : Colors.grey,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                              child: const Text("Register"),
+                            ),
+                      const SizedBox(height: 65),
+
+                      // Login redirect
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("Already have an account? "),
+                          GestureDetector(
+                            onTap: () => Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => LoginScreen()),
-                            );
-                          },
-                          child: Text(
-                            "Log In",
-                            style: TextStyle(
-                              color: Color(0xFF144FAB),
-                              fontWeight: FontWeight.bold,
+                              MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            ),
+                            child: const Text(
+                              "Log In",
+                              style: TextStyle(
+                                color: Color(0xFF144FAB),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -318,37 +342,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Reusable text field widget
   Widget _buildTextField({
     required TextEditingController controller,
     required String hintText,
+    required FormFieldValidator<String> validator,
     bool obscureText = false,
     TextInputAction textInputAction = TextInputAction.next,
     Widget? suffixIcon,
     required FocusNode focusNode,
     required FocusNode nextFocusNode,
   }) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       obscureText: obscureText,
+      validator: validator,
       textInputAction: textInputAction,
       focusNode: focusNode,
-      onSubmitted: (_) {
-        FocusScope.of(context).requestFocus(nextFocusNode);
-      },
+      onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(nextFocusNode),
       decoration: InputDecoration(
         hintText: hintText,
-        suffixIcon: suffixIcon,  // All icons are now suffix icons with updated color
+        suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Color(0xFFF2F7FF),
+        fillColor: const Color(0xFFF2F7FF),
         border: InputBorder.none,
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide.none,
           borderRadius: BorderRadius.circular(6),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: Color(0xFF144FAB),
+            width: 2.0,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderSide: const BorderSide(
+            color: Colors.red,
+            width: 1.0,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderSide: const BorderSide(
+            color: Colors.red,
             width: 2.0,
           ),
           borderRadius: BorderRadius.circular(6),

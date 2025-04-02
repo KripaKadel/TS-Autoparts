@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:ts_autoparts_app/models/user.dart'; // Import the User model
+import 'package:ts_autoparts_app/models/user.dart';
 
 class AuthService {
-  //static const String baseUrl = 'http://192.168.1.64:8000/api';
   static const String baseUrl = 'http://10.0.2.2:8000/api';
-  //static const String baseUrl = 'http://192.168.18.153:8000/api';
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  // Register a new user (no role field needed)
+  // Register a new user with email verification support
   Future<User?> registerUser(
     String name,
     String email,
@@ -16,103 +15,193 @@ class AuthService {
     String password,
     String confirmPassword,
   ) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'name': name,
-        'email': email,
-        'phone_number': phoneNumber,
-        'password': password,
-        'password_confirmation': confirmPassword, // Corrected to match Laravel's expected field
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'name': name,
+          'email': email,
+          'phone_number': phoneNumber,
+          'password': password,
+          'password_confirmation': confirmPassword,
+        }),
+      );
 
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');  // Info about the response
+      print('Registration Response: ${response.statusCode} - ${response.body}');
 
-    if (response.statusCode == 201) {
-      final responseBody = json.decode(response.body);
-      return User.fromJson(responseBody);
-    } else {
-      print('Registration failed: ${response.body}');
-      return null;
+      if (response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        final user = User.fromJson(responseData);
+        
+        // Store the access token if available
+        if (user.accessToken.isNotEmpty) {
+          await _storage.write(key: 'access_token', value: user.accessToken);
+        }
+        
+        return user;
+      } else {
+        throw Exception('Registration failed: ${response.body}');
+      }
+    } catch (e) {
+      print('Registration error: $e');
+      rethrow;
+    }
+  }
+
+  // Verify user's email
+  Future<bool> verifyEmail(String userId, String verificationHash) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/email/verify/$userId/$verificationHash'),
+        headers: await _getAuthHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        // Update stored user verification status
+        final currentUser = await getAuthenticatedUser();
+        if (currentUser != null) {
+          final updatedUser = currentUser.copyWith(
+            isEmailVerified: true,
+            emailVerifiedAt: DateTime.now(),
+          );
+          await _storage.write(
+            key: 'user_data',
+            value: json.encode(updatedUser.toJson()),
+          );
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Email verification error: $e');
+      return false;
+    }
+  }
+
+  // Resend verification email
+  Future<bool> resendVerificationEmail() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/email/resend'),
+        headers: await _getAuthHeaders(),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Resend verification error: $e');
+      return false;
     }
   }
 
   // Login a user
   Future<User?> loginUser(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password}),
-    );
-
-    if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      return User.fromJson(responseBody);
-    } else {
-      print('Login failed: ${response.body}');
-      return null;
-    }
-  }
-
-  // Fetch authenticated user
-  Future<User?> getAuthenticatedUser() async {
-    final storage = FlutterSecureStorage();
-    String? token = await storage.read(key: 'access_token');
-
-    if (token != null) {
-      final response = await http.get(
-        Uri.parse('$baseUrl/user'),
-        headers: {'Authorization': 'Bearer $token'},
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email, 'password': password}),
       );
 
       if (response.statusCode == 200) {
-        final responseBody = json.decode(response.body);
-        return User.fromJson(responseBody);
+        final responseData = json.decode(response.body);
+        final user = User.fromJson(responseData);
+        
+        // Store the access token
+        await _storage.write(key: 'access_token', value: user.accessToken);
+        await _storage.write(key: 'user_data', value: json.encode(user.toJson()));
+        
+        return user;
       } else {
-        print('Failed to fetch user details: ${response.body}');
-        return null;
+        throw Exception('Login failed: ${response.body}');
       }
-    } else {
-      print('No token found');
+    } catch (e) {
+      print('Login error: $e');
+      rethrow;
+    }
+  }
+
+  // Fetch authenticated user with verification status
+  Future<User?> getAuthenticatedUser() async {
+    try {
+      final token = await _storage.read(key: 'access_token');
+      final userData = await _storage.read(key: 'user_data');
+
+      if (token != null) {
+        // If we have stored user data, return it immediately
+        if (userData != null) {
+          return User.fromJson(json.decode(userData));
+        }
+
+        // Otherwise fetch fresh data from API
+        final response = await http.get(
+          Uri.parse('$baseUrl/user'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final user = User.fromJson(json.decode(response.body));
+          await _storage.write(
+            key: 'user_data',
+            value: json.encode(user.toJson()),
+          );
+          return user;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Get user error: $e');
       return null;
     }
   }
 
-
   Future<String?> getCurrentToken() async {
-  final storage = FlutterSecureStorage();
-  return await storage.read(key: 'access_token');
-}
+    return await _storage.read(key: 'access_token');
+  }
 
   // Logout the user
   Future<bool> logoutUser() async {
-    final storage = FlutterSecureStorage();
-    String? token = await storage.read(key: 'access_token');
+    try {
+      final token = await _storage.read(key: 'access_token');
+      if (token != null) {
+        final response = await http.post(
+          Uri.parse('$baseUrl/logout'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
 
-    if (token != null) {
-      // Send the request to logout
-      final response = await http.post(
-        Uri.parse('$baseUrl/logout'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        // Clear the token from secure storage
-        await storage.delete(key: 'access_token');
-        return true;
-      } else {
-        print('Logout failed: ${response.body}');
-        return false;
+        if (response.statusCode == 200) {
+          await _clearStorage();
+          return true;
+        }
       }
-    } else {
-      print('No token found to logout');
+      return false;
+    } catch (e) {
+      print('Logout error: $e');
       return false;
     }
+  }
+
+  // Helper method to get auth headers
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final token = await _storage.read(key: 'access_token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  // Clear all stored data
+  Future<void> _clearStorage() async {
+    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'user_data');
+  }
+
+  // Check if user is logged in and verified
+  Future<bool> isUserVerified() async {
+    final user = await getAuthenticatedUser();
+    return user != null && user.isVerified;
   }
 }

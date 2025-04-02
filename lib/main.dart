@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
- // Use khalti package
 import 'package:ts_autoparts_app/screens/home_screen.dart'; // Import Home page
 import 'package:ts_autoparts_app/screens/login_screen.dart'; // Import Login page
 import 'package:ts_autoparts_app/screens/profile_screen.dart'; // Import Profile page
@@ -10,8 +9,6 @@ import 'package:ts_autoparts_app/screens/cart_screen.dart'; // Import Cart page
 import 'package:ts_autoparts_app/components/navbar.dart'; // Import the custom bottom navbar
 
 void main() {
-  
-
   runApp(MyApp());
 }
 
@@ -224,3 +221,5 @@ class _ProfileWrapperState extends State<ProfileWrapper> {
     );
   }
 }
+
+
