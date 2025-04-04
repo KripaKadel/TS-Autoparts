@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\Orders;
+use App\Models\Order;
 use App\Models\Products;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -43,7 +43,7 @@ class AdminController extends Controller
     public function dashboard()
     {
         // Fetch data for dashboard stats
-        $totalOrders = Orders::count(); // Assuming you have an Order model
+        $totalOrders = Order::count(); // Assuming you have an Order model
         $totalAppointments = Appointment::count(); // Assuming you have an Appointment model
         $totalProducts = Products::count(); // Assuming you have a Product model
         $totalUsers = User::count(); // Assuming you have a User model
