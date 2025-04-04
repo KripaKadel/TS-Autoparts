@@ -49,47 +49,76 @@ class AuthService {
     }
   }
 
-  // Verify user's email
-  Future<bool> verifyEmail(String userId, String verificationHash) async {
+  // Send OTP to the user's email
+  Future<bool> sendOtp(String email) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/email/verify/$userId/$verificationHash'),
-        headers: await _getAuthHeaders(),
+      final response = await http.post(
+        Uri.parse('$baseUrl/send-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+        }),
       );
 
-      if (response.statusCode == 200) {
-        // Update stored user verification status
-        final currentUser = await getAuthenticatedUser();
-        if (currentUser != null) {
-          final updatedUser = currentUser.copyWith(
-            isEmailVerified: true,
-            emailVerifiedAt: DateTime.now(),
-          );
-          await _storage.write(
-            key: 'user_data',
-            value: json.encode(updatedUser.toJson()),
-          );
-        }
-        return true;
-      }
-      return false;
+      print('Send OTP Response: ${response.statusCode} - ${response.body}');
+
+      return response.statusCode == 200;
     } catch (e) {
-      print('Email verification error: $e');
+      print('Send OTP error: $e');
       return false;
     }
   }
 
-  // Resend verification email
-  Future<bool> resendVerificationEmail() async {
+  // Verify OTP for email verification
+  Future<bool> verifyOtp(String email, String otp) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/email/resend'),
-        headers: await _getAuthHeaders(),
+        Uri.parse('$baseUrl/verify-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'otp': otp,
+        }),
       );
+
+      print('Verify OTP Response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200) {
+        // Update user's verification status here if needed
+        final responseData = json.decode(response.body);
+        if (responseData['verified'] == true) {
+          final currentUser = await getAuthenticatedUser();
+          if (currentUser != null) {
+            final updatedUser = currentUser.copyWith(isEmailVerified: true);
+            await _storage.write(
+              key: 'user_data',
+              value: json.encode(updatedUser.toJson()),
+            );
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Verify OTP error: $e');
+      return false;
+    }
+  }
+
+  // Resend verification OTP
+  Future<bool> resendOtp(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/resend-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email}),
+      );
+
+      print('Resend OTP Response: ${response.statusCode} - ${response.body}');
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Resend verification error: $e');
+      print('Resend OTP error: $e');
       return false;
     }
   }

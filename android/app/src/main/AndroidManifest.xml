@@ -43,10 +43,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!-- Custom scheme for your app -->
                 <data android:scheme="tsautoparts" android:host="verify" />
-                <!-- Optional: Add HTTPS support for universal links -->
-                <data android:scheme="https"
-                      android:host="yourdomain.com"
-                      android:pathPrefix="/verify-email" />
+               
             </intent-filter>
         </activity>
 

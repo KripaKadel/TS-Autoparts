@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/screens/home_screen.dart';
 import 'package:ts_autoparts_app/screens/login_screen.dart';
-import 'package:ts_autoparts_app/screens/verifyemail_screen.dart';
+import 'package:ts_autoparts_app/screens/otp_verification_screen.dart'; // New import
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,29 +16,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final AuthService authService = AuthService();
   final _formKey = GlobalKey<FormState>();
 
-  // [Keep all your existing controllers and variables]
+  // Controllers
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
 
+  // State variables
   bool isPasswordVisible = false;
   bool isConfirmPasswordVisible = false;
   bool agreeToTerms = false;
   bool isLoading = false;
 
   // Focus nodes
-  FocusNode fullNameFocusNode = FocusNode();
-  FocusNode emailFocusNode = FocusNode();
-  FocusNode phoneFocusNode = FocusNode();
-  FocusNode passwordFocusNode = FocusNode();
-  FocusNode confirmPasswordFocusNode = FocusNode();
+  final FocusNode fullNameFocusNode = FocusNode();
+  final FocusNode emailFocusNode = FocusNode();
+  final FocusNode phoneFocusNode = FocusNode();
+  final FocusNode passwordFocusNode = FocusNode();
+  final FocusNode confirmPasswordFocusNode = FocusNode();
 
   Future<void> registerUser() async {
     if (!_formKey.currentState!.validate()) return;
     if (passwordController.text != confirmPasswordController.text) {
       _showDialog("Error", "Passwords do not match!");
+      return;
+    }
+    if (!agreeToTerms) {
+      _showDialog("Error", "Please agree to terms and conditions");
       return;
     }
 
@@ -54,35 +59,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (user != null) {
-        if (user.isVerified) {
-          // If email is already verified (unlikely during registration)
-          _showDialog("Success", "Registration successful! Welcome, ${user.name}!", 
-            isSuccess: true,
-            route: HomeScreen(),
-          );
-        } else {
-          // Navigate to verification screen with proper parameters
+  // Navigate to verification screen with success callback
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => OtpVerificationScreen(
+        email: user.email,
+        onVerificationSuccess: () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (context) => VerifyEmailScreen(
-                email: user.email,
-                userId: user.id.toString(),
-                verificationHash: user.verificationHash ?? '',
-              ),
-            ),
+            MaterialPageRoute(builder: (context) => HomeScreen()),
           );
-        }
-        _clearFields();
-      }
+        },
+      ),
+    ),
+  );
+}
     } catch (e) {
-      _showDialog("Error", e.toString());
+      _showDialog("Registration Error", e.toString());
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  // [Keep all your existing helper methods]
   void _clearFields() {
     fullNameController.clear();
     emailController.clear();
@@ -91,10 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     confirmPasswordController.clear();
   }
 
-  void _showDialog(String title, String message, {
-    bool isSuccess = false, 
-    Widget? route,
-  }) {
+  void _showDialog(String title, String message, {VoidCallback? onOkPressed}) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -102,15 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              if (isSuccess && route != null) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => route),
-                );
-              }
-            },
+            onPressed: onOkPressed ?? () => Navigator.of(context).pop(),
             child: const Text("OK"),
           ),
         ],
@@ -120,6 +108,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    fullNameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
     fullNameFocusNode.dispose();
     emailFocusNode.dispose();
     phoneFocusNode.dispose();
@@ -149,7 +142,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     height: 110,
                     width: 100,
                   ),
-                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -192,8 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: fullNameController,
                         hintText: "Full Name",
                         validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
-                        suffixIcon: const Icon(Icons.person, color: Color(0xFF7A879C)),
-                        textInputAction: TextInputAction.next,
+                        icon: Icons.person,
                         focusNode: fullNameFocusNode,
                         nextFocusNode: emailFocusNode,
                       ),
@@ -205,9 +196,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         hintText: "Email",
                         validator: (value) => 
                             value!.isEmpty ? 'Please enter your email' :
-                            !value.contains('@') ? 'Enter a valid email' : null,
-                        suffixIcon: const Icon(Icons.email, color: Color(0xFF7A879C)),
-                        textInputAction: TextInputAction.next,
+                            !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!) 
+                              ? 'Enter a valid email' : null,
+                        icon: Icons.email,
                         focusNode: emailFocusNode,
                         nextFocusNode: phoneFocusNode,
                       ),
@@ -216,56 +207,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       // Phone Number
                       _buildTextField(
                         controller: phoneController,
-                        hintText: "Phone No",
+                        hintText: "Phone Number",
                         validator: (value) => 
                             value!.isEmpty ? 'Please enter your phone number' :
                             value.length < 10 ? 'Enter a valid phone number' : null,
-                        suffixIcon: const Icon(Icons.phone, color: Color(0xFF7A879C)),
-                        textInputAction: TextInputAction.next,
+                        icon: Icons.phone,
+                        keyboardType: TextInputType.phone,
                         focusNode: phoneFocusNode,
                         nextFocusNode: passwordFocusNode,
                       ),
                       const SizedBox(height: 10),
 
                       // Password
-                      _buildTextField(
+                      _buildPasswordField(
                         controller: passwordController,
                         hintText: "Password",
-                        obscureText: !isPasswordVisible,
+                        isPasswordVisible: isPasswordVisible,
                         validator: (value) => 
                             value!.isEmpty ? 'Please enter password' :
                             value.length < 8 ? 'Password must be at least 8 characters' : null,
-                        textInputAction: TextInputAction.next,
-                        suffixIcon: GestureDetector(
-                          onTap: () => setState(() => isPasswordVisible = !isPasswordVisible),
-                          child: Icon(
-                            isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                            color: const Color(0xFF7A879C),
-                          ),
-                        ),
                         focusNode: passwordFocusNode,
                         nextFocusNode: confirmPasswordFocusNode,
+                        onVisibilityChanged: () => setState(() => isPasswordVisible = !isPasswordVisible),
                       ),
                       const SizedBox(height: 10),
 
                       // Confirm Password
-                      _buildTextField(
+                      _buildPasswordField(
                         controller: confirmPasswordController,
                         hintText: "Confirm Password",
-                        obscureText: !isConfirmPasswordVisible,
+                        isPasswordVisible: isConfirmPasswordVisible,
                         validator: (value) => 
                             value!.isEmpty ? 'Please confirm password' :
                             value != passwordController.text ? 'Passwords do not match' : null,
-                        textInputAction: TextInputAction.done,
-                        suffixIcon: GestureDetector(
-                          onTap: () => setState(() => isConfirmPasswordVisible = !isConfirmPasswordVisible),
-                          child: Icon(
-                            isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                            color: const Color(0xFF7A879C),
-                          ),
-                        ),
                         focusNode: confirmPasswordFocusNode,
-                        nextFocusNode: FocusNode(),
+                        textInputAction: TextInputAction.done,
+                        onVisibilityChanged: () => setState(() => isConfirmPasswordVisible = !isConfirmPasswordVisible),
                       ),
                       const SizedBox(height: 20),
 
@@ -275,61 +252,75 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Checkbox(
                             value: agreeToTerms,
                             onChanged: (value) => setState(() => agreeToTerms = value!),
+                            activeColor: const Color(0xFF144FAB),
                           ),
                           const Text("I agree with "),
                           GestureDetector(
-                            onTap: () {}, // Add terms screen navigation
+                            onTap: () => _showTermsDialog(),
                             child: const Text(
                               "Terms & Conditions",
                               style: TextStyle(
                                 color: Color(0xFF144FAB),
                                 fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 20),
 
                       // Register Button
-                      isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : ElevatedButton(
-                              onPressed: agreeToTerms ? registerUser : null,
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: const Size(double.infinity, 50),
-                                backgroundColor: agreeToTerms
-                                    ? const Color(0xFF144FAB)
-                                    : Colors.grey,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                              child: const Text("Register"),
-                            ),
-                      const SizedBox(height: 65),
-
-                      // Login redirect
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("Already have an account? "),
-                          GestureDetector(
-                            onTap: () => Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
-                            ),
-                            child: const Text(
-                              "Log In",
-                              style: TextStyle(
-                                color: Color(0xFF144FAB),
-                                fontWeight: FontWeight.bold,
-                              ),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : registerUser,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF144FAB),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                        ],
+                          child: isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "Register",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Login redirect
+                      Center(
+                        child: TextButton(
+                          onPressed: () => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                          ),
+                          child: const Text.rich(
+                            TextSpan(
+                              text: "Already have an account? ",
+                              children: [
+                                TextSpan(
+                                  text: "Log In",
+                                  style: TextStyle(
+                                    color: Color(0xFF144FAB),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -346,50 +337,127 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required TextEditingController controller,
     required String hintText,
     required FormFieldValidator<String> validator,
-    bool obscureText = false,
+    required IconData icon,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
+    TextInputType? keyboardType,
     TextInputAction textInputAction = TextInputAction.next,
-    Widget? suffixIcon,
-    required FocusNode focusNode,
-    required FocusNode nextFocusNode,
   }) {
     return TextFormField(
       controller: controller,
-      obscureText: obscureText,
       validator: validator,
-      textInputAction: textInputAction,
       focusNode: focusNode,
-      onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(nextFocusNode),
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onFieldSubmitted: (_) => nextFocusNode?.requestFocus(),
       decoration: InputDecoration(
         hintText: hintText,
-        suffixIcon: suffixIcon,
+        suffixIcon: Icon(icon, color: const Color(0xFF7A879C)),
         filled: true,
         fillColor: const Color(0xFFF2F7FF),
-        border: InputBorder.none,
-        enabledBorder: OutlineInputBorder(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
-          borderRadius: BorderRadius.circular(6),
         ),
         focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(
             color: Color(0xFF144FAB),
-            width: 2.0,
+            width: 1.5,
           ),
-          borderRadius: BorderRadius.circular(6),
         ),
         errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(
             color: Colors.red,
-            width: 1.0,
+            width: 1.5,
           ),
-          borderRadius: BorderRadius.circular(6),
         ),
-        focusedErrorBorder: OutlineInputBorder(
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String hintText,
+    required bool isPasswordVisible,
+    required FormFieldValidator<String> validator,
+    required FocusNode focusNode,
+    required VoidCallback onVisibilityChanged,
+    TextInputAction textInputAction = TextInputAction.next,
+    FocusNode? nextFocusNode,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: !isPasswordVisible,
+      validator: validator,
+      focusNode: focusNode,
+      textInputAction: textInputAction,
+      onFieldSubmitted: (_) => nextFocusNode?.requestFocus(),
+      decoration: InputDecoration(
+        hintText: hintText,
+        suffixIcon: IconButton(
+          icon: Icon(
+            isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+            color: const Color(0xFF7A879C),
+          ),
+          onPressed: onVisibilityChanged,
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF2F7FF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(
+            color: Color(0xFF144FAB),
+            width: 1.5,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(
             color: Colors.red,
-            width: 2.0,
+            width: 1.5,
           ),
-          borderRadius: BorderRadius.circular(6),
         ),
+      ),
+    );
+  }
+
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Terms & Conditions"),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                "By creating an account, you agree to our:",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Text("1. Privacy Policy"),
+              Text("2. Terms of Service"),
+              Text("3. Acceptable Use Policy"),
+              SizedBox(height: 15),
+              Text(
+                "Please read our full terms on our website.",
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
+          ),
+        ],
       ),
     );
   }
