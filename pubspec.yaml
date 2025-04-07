@@ -47,6 +47,7 @@ dependencies:
     path: ./external_sdk/eSewa_sdk/esewa_flutter_sdk
   dio: ^5.8.0+1
   app_links: ^6.4.0
+  google_sign_in: ^6.3.0
  
 
 dev_dependencies:
@@ -94,6 +95,7 @@ flutter:
       - assets/icons/Fluids.svg
       - assets/icons/Lights.svg
       - assets/icons/Shocks.svg
+      - assets/certs/cacert.pem
 
      
   #   - images/a_dot_ham.jpeg

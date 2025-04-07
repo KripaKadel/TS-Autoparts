@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/screens/home_screen.dart';
 import 'package:ts_autoparts_app/screens/login_screen.dart';
-import 'package:ts_autoparts_app/screens/otp_verification_screen.dart'; // New import
+import 'package:ts_autoparts_app/screens/otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,81 +13,92 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final AuthService authService = AuthService();
+  final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
-  final TextEditingController fullNameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   // State variables
-  bool isPasswordVisible = false;
-  bool isConfirmPasswordVisible = false;
-  bool agreeToTerms = false;
-  bool isLoading = false;
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+  bool _agreeToTerms = false;
+  bool _isLoading = false;
+  bool _isGoogleLoading = false;
 
   // Focus nodes
-  final FocusNode fullNameFocusNode = FocusNode();
-  final FocusNode emailFocusNode = FocusNode();
-  final FocusNode phoneFocusNode = FocusNode();
-  final FocusNode passwordFocusNode = FocusNode();
-  final FocusNode confirmPasswordFocusNode = FocusNode();
+  final FocusNode _fullNameFocusNode = FocusNode();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _phoneFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _confirmPasswordFocusNode = FocusNode();
 
-  Future<void> registerUser() async {
+  Future<void> _registerUser() async {
     if (!_formKey.currentState!.validate()) return;
-    if (passwordController.text != confirmPasswordController.text) {
+    if (_passwordController.text != _confirmPasswordController.text) {
       _showDialog("Error", "Passwords do not match!");
       return;
     }
-    if (!agreeToTerms) {
+    if (!_agreeToTerms) {
       _showDialog("Error", "Please agree to terms and conditions");
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() => _isLoading = true);
 
     try {
-      final user = await authService.registerUser(
-        fullNameController.text,
-        emailController.text,
-        phoneController.text,
-        passwordController.text,
-        confirmPasswordController.text,
+      final user = await _authService.registerUser(
+        name: _fullNameController.text,
+        email: _emailController.text,
+        phoneNumber: _phoneController.text,
+        password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
       );
 
-      if (user != null) {
-  // Navigate to verification screen with success callback
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (context) => OtpVerificationScreen(
-        email: user.email,
-        onVerificationSuccess: () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomeScreen()),
-          );
-        },
-      ),
-    ),
-  );
-}
+      if (user != null && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OtpVerificationScreen(
+              email: user.email,
+              onVerificationSuccess: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => HomeScreen()),
+                );
+              },
+            ),
+          ),
+        );
+      }
     } catch (e) {
-      _showDialog("Registration Error", e.toString());
+      if (mounted) {
+        _showDialog("Registration Error", e.toString());
+      }
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _clearFields() {
-    fullNameController.clear();
-    emailController.clear();
-    phoneController.clear();
-    passwordController.clear();
-    confirmPasswordController.clear();
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+    
+    try {
+      final user = await _authService.loginWithGoogle();
+      if (user != null && mounted) {
+         Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showDialog("Google Sign-In Error", e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
   }
 
   void _showDialog(String title, String message, {VoidCallback? onOkPressed}) {
@@ -108,16 +119,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    fullNameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
-    fullNameFocusNode.dispose();
-    emailFocusNode.dispose();
-    phoneFocusNode.dispose();
-    passwordFocusNode.dispose();
-    confirmPasswordFocusNode.dispose();
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _fullNameFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
     super.dispose();
   }
 
@@ -128,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Logo Section
+            // Logo Section (unchanged)
             Container(
               width: double.infinity,
               height: 300,
@@ -146,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             
-            // Form Section
+            // Form Section (unchanged)
             Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -179,84 +190,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
                       
-                      // Full Name
+                      // Full Name (unchanged)
                       _buildTextField(
-                        controller: fullNameController,
+                        controller: _fullNameController,
                         hintText: "Full Name",
                         validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
                         icon: Icons.person,
-                        focusNode: fullNameFocusNode,
-                        nextFocusNode: emailFocusNode,
+                        focusNode: _fullNameFocusNode,
+                        nextFocusNode: _emailFocusNode,
                       ),
                       const SizedBox(height: 10),
 
-                      // Email
+                      // Email (unchanged)
                       _buildTextField(
-                        controller: emailController,
+                        controller: _emailController,
                         hintText: "Email",
                         validator: (value) => 
                             value!.isEmpty ? 'Please enter your email' :
-                            !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!) 
+                            !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value) 
                               ? 'Enter a valid email' : null,
                         icon: Icons.email,
-                        focusNode: emailFocusNode,
-                        nextFocusNode: phoneFocusNode,
+                        focusNode: _emailFocusNode,
+                        nextFocusNode: _phoneFocusNode,
                       ),
                       const SizedBox(height: 10),
 
-                      // Phone Number
+                      // Phone Number (unchanged)
                       _buildTextField(
-                        controller: phoneController,
+                        controller: _phoneController,
                         hintText: "Phone Number",
                         validator: (value) => 
                             value!.isEmpty ? 'Please enter your phone number' :
                             value.length < 10 ? 'Enter a valid phone number' : null,
                         icon: Icons.phone,
                         keyboardType: TextInputType.phone,
-                        focusNode: phoneFocusNode,
-                        nextFocusNode: passwordFocusNode,
+                        focusNode: _phoneFocusNode,
+                        nextFocusNode: _passwordFocusNode,
                       ),
                       const SizedBox(height: 10),
 
-                      // Password
+                      // Password (unchanged)
                       _buildPasswordField(
-                        controller: passwordController,
+                        controller: _passwordController,
                         hintText: "Password",
-                        isPasswordVisible: isPasswordVisible,
+                        isPasswordVisible: _isPasswordVisible,
                         validator: (value) => 
                             value!.isEmpty ? 'Please enter password' :
                             value.length < 8 ? 'Password must be at least 8 characters' : null,
-                        focusNode: passwordFocusNode,
-                        nextFocusNode: confirmPasswordFocusNode,
-                        onVisibilityChanged: () => setState(() => isPasswordVisible = !isPasswordVisible),
+                        focusNode: _passwordFocusNode,
+                        nextFocusNode: _confirmPasswordFocusNode,
+                        onVisibilityChanged: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                       ),
                       const SizedBox(height: 10),
 
-                      // Confirm Password
+                      // Confirm Password (unchanged)
                       _buildPasswordField(
-                        controller: confirmPasswordController,
+                        controller: _confirmPasswordController,
                         hintText: "Confirm Password",
-                        isPasswordVisible: isConfirmPasswordVisible,
+                        isPasswordVisible: _isConfirmPasswordVisible,
                         validator: (value) => 
                             value!.isEmpty ? 'Please confirm password' :
-                            value != passwordController.text ? 'Passwords do not match' : null,
-                        focusNode: confirmPasswordFocusNode,
+                            value != _passwordController.text ? 'Passwords do not match' : null,
+                        focusNode: _confirmPasswordFocusNode,
                         textInputAction: TextInputAction.done,
-                        onVisibilityChanged: () => setState(() => isConfirmPasswordVisible = !isConfirmPasswordVisible),
+                        onVisibilityChanged: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
                       ),
                       const SizedBox(height: 20),
 
-                      // Terms and conditions checkbox
+                      // Terms and conditions checkbox (unchanged)
                       Row(
                         children: [
                           Checkbox(
-                            value: agreeToTerms,
-                            onChanged: (value) => setState(() => agreeToTerms = value!),
+                            value: _agreeToTerms,
+                            onChanged: (value) => setState(() => _agreeToTerms = value!),
                             activeColor: const Color(0xFF144FAB),
                           ),
                           const Text("I agree with "),
                           GestureDetector(
-                            onTap: () => _showTermsDialog(),
+                            onTap: _showTermsDialog,
                             child: const Text(
                               "Terms & Conditions",
                               style: TextStyle(
@@ -269,11 +280,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Register Button
+                      // Register Button (unchanged)
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: isLoading ? null : registerUser,
+                          onPressed: _isLoading ? null : _registerUser,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF144FAB),
                             foregroundColor: Colors.white,
@@ -282,7 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: isLoading
+                          child: _isLoading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
@@ -299,28 +310,72 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Login redirect
-                      Center(
-                        child: TextButton(
-                          onPressed: () => Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      // OR Divider (unchanged)
+                      Row(
+                        children: const [
+                          Expanded(child: Divider()),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text("OR"),
                           ),
-                          child: const Text.rich(
-                            TextSpan(
-                              text: "Already have an account? ",
-                              children: [
-                                TextSpan(
-                                  text: "Log In",
-                                  style: TextStyle(
-                                    color: Color(0xFF144FAB),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Google Sign-In Button (unchanged)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            side: const BorderSide(color: Colors.grey),
+                          ),
+                          icon: _isGoogleLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : SvgPicture.asset(
+                                  'assets/images/Google.svg',
+                                  height: 30,
+                                  width: 30,
+                                ),
+                          label: Text(
+                            _isGoogleLoading ? 'Signing In...' : 'Continue with Google',
+                            style: const TextStyle(color: Colors.black),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Login redirect (unchanged)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("Already have a account? "),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              );
+                            },
+                            child: const Text(
+                              'Login',
+                              style: TextStyle(
+                                color: Color(0xFF144FAB),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

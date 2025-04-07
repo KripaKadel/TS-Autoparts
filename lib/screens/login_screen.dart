@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; 
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
-import 'package:ts_autoparts_app/screens/register_screen.dart'; 
-import 'package:app_links/app_links.dart';  // app_links package for deep linking
-import 'package:flutter/services.dart';
+import 'package:ts_autoparts_app/screens/register_screen.dart'; // Import Register screen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,71 +14,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   bool _obscurePassword = true; // For password visibility toggle
   String? _errorMessage; // To hold error messages
-
-  final AppLinks _appLinks = AppLinks();  // Instantiate AppLinks for deep linking
-
-  @override
-  void initState() {
-    super.initState();
-    _handleDeepLink(); // Handle deep link when the login screen is opened
-  }
-
-  // Handle deep link when the login screen is opened from email verification
-  Future<void> _handleDeepLink() async {
-    try {
-      // Get the initial deep link (if the app was opened via a link)
-      final Uri? initialLink = await _appLinks.getInitialLink();
-      if (initialLink != null) {
-        _handleUri(initialLink); // Handle the incoming deep link
-      }
-
-      // Listen for any future deep links
-      _appLinks.uriLinkStream.listen((Uri? uri) {
-        if (uri != null) {
-          _handleUri(uri); // Handle the deep link when received
-        }
-      });
-    } on PlatformException {
-      // Handle any error when retrieving deep link
-      print("Error occurred while processing the deep link");
-    }
-  }
-
-  // Handle the incoming deep link and process the token
-  void _handleUri(Uri uri) {
-    // Check if the URI is a valid deep link for verification
-    if (uri.scheme == 'tsautoparts') {  // Check for the deep link's host
-      String? token = uri.queryParameters['token'];
-      String? hash = uri.queryParameters['hash'];
-      if (token != null && hash != null) {
-        // You can verify the email here using the token, then stay on the login screen
-        _verifyEmail(token, hash).then((isVerified) {
-          if (isVerified) {
-            setState(() {
-              _errorMessage = 'Email verified successfully!';
-            });
-          } else {
-            setState(() {
-              _errorMessage = 'Email verification failed. Please try again.';
-            });
-          }
-        });
-      }
-    }
-  }
-
-  // Function to verify email using the token and hash
-  Future<bool> _verifyEmail(String token, String hash) async {
-    // Replace this with your API call for verifying the email token
-    // You can call your backend API to verify the token and mark the user's email as verified
-    await Future.delayed(Duration(seconds: 2)); // Simulate API call delay
-    return true; // Assume the token is valid for now
-  }
 
   // Handle login
   Future<void> _login() async {
@@ -180,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     SizedBox(height: 20),
 
-                    // Show error message if login failed or email verification result
+                    // Show error message if login failed
                     if (_errorMessage != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),

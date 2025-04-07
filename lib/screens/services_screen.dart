@@ -59,7 +59,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     try {
       final token = await _getToken();
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/mechanics'),
+        Uri.parse('${AuthService.baseUrl}/api/mechanics'),
         headers: {'Authorization': 'Bearer $token'},
       );
 

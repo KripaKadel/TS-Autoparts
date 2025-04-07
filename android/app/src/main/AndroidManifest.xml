@@ -7,10 +7,13 @@
     <application
         android:label="ts_autoparts_app"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- Main Activity with Deep Linking -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+
+        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -20,8 +23,8 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            
-            <!-- Flutter Deep Linking Meta -->
+
+            <!-- Flutter Deep Linking Meta (If you're not using deep linking, you can remove this) -->
             <meta-data 
                 android:name="flutter_deeplinking_enabled" 
                 android:value="true" />
@@ -36,15 +39,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Deep Link for Email Verification -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Custom scheme for your app -->
-                <data android:scheme="tsautoparts" android:host="verify" />
-               
-            </intent-filter>
         </activity>
 
         <!-- eSewa Payment Activity (Keep Existing) -->
