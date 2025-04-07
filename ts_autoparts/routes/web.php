@@ -3,88 +3,68 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\Auth\VerificationController;
-use App\Http\Controllers\ProductController; // Add ProductController for product management
-use App\Http\Controllers\UserController; // Add UserController for user management
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Mail;
-// Route for showing the admin login form
-Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
 
-// Route for handling admin login logic
+// Google Auth Routes (using web middleware for session handling)
+Route::middleware('web')->get('/auth/google', [SocialAuthController::class, 'redirectToGoogle']);
+Route::middleware('web')->get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
+
+
+// Admin Authentication Routes
+Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [AdminController::class, 'login']);
- 
-// Define the logout route (POST request for logout)
 Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.logout');
 
-// Protect the admin dashboard and management routes with authentication middleware
+// Protect routes with auth middleware
 Route::middleware(['auth'])->group(function () {
-    // Route for the admin dashboard (accessible only after login)
+
+    // Admin Dashboard
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     
-    // Routes to manage orders
+    // Admin Orders Management
     Route::get('/admin/orders', [AdminController::class, 'manageOrders'])->name('admin.orders');
     
-    // Routes to manage appointments
+    // Admin Appointments Management
     Route::get('/admin/appointments', [AdminController::class, 'manageAppointments'])->name('admin.appointments');
 
-    // Grouped Routes for Categories
+    // Category Management
     Route::prefix('admin/categories')->name('admin.categories.')->group(function () {
-        // Show the form to create a category
         Route::get('/create', [CategoryController::class, 'create'])->name('create');
-        
-        // Store a new category
         Route::post('/', [CategoryController::class, 'store'])->name('store');
-        
-        // View all categories
         Route::get('/', [CategoryController::class, 'index'])->name('index');
-        
-        // Edit category form
         Route::get('/edit/{id}', [CategoryController::class, 'edit'])->name('edit');
-        
-        // Update category
         Route::put('/update/{id}', [CategoryController::class, 'update'])->name('update');
     });
 
-    // Routes to manage products
+    // Product Management
     Route::prefix('admin/products')->name('admin.products.')->group(function () {
-        Route::get('/index', [ProductController::class, 'index'])->name('index'); // Display all products
-        Route::get('/create', [ProductController::class, 'create'])->name('create'); // Show create product form
-        Route::post('/store', [ProductController::class, 'store'])->name('store'); // Store new product
-        Route::get('/edit/{id}', [ProductController::class, 'edit'])->name('edit'); // Show edit product form
-        Route::put('/update/{id}', [ProductController::class, 'update'])->name('update'); // Update product
-        Route::delete('/delete/{id}', [ProductController::class, 'destroy'])->name('destroy'); // Delete product
+        Route::get('/index', [ProductController::class, 'index'])->name('index');
+        Route::get('/create', [ProductController::class, 'create'])->name('create');
+        Route::post('/store', [ProductController::class, 'store'])->name('store');
+        Route::get('/edit/{id}', [ProductController::class, 'edit'])->name('edit');
+        Route::put('/update/{id}', [ProductController::class, 'update'])->name('update');
+        Route::delete('/delete/{id}', [ProductController::class, 'destroy'])->name('destroy');
     });
 
-    // Routes to manage users (CRUD operations)
+    // User Management
     Route::prefix('admin/users')->name('admin.users.')->group(function () {
-        Route::get('/', [UserController::class, 'index'])->name('index'); // View all users
-        Route::get('/create', [UserController::class, 'create'])->name('create'); // Show create user form
-        Route::post('/', [UserController::class, 'store'])->name('store'); // Store new user
-        Route::get('/edit/{id}', [UserController::class, 'edit'])->name('edit'); // Show edit user form
-        Route::put('/update/{id}', [UserController::class, 'update'])->name('update'); // Update user
-        Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('destroy'); // Delete user
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::get('/create', [UserController::class, 'create'])->name('create');
+        Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::get('/edit/{id}', [UserController::class, 'edit'])->name('edit');
+        Route::put('/update/{id}', [UserController::class, 'update'])->name('update');
+        Route::delete('/delete/{id}', [UserController::class, 'destroy'])->name('destroy');
     });
 
+    // Test email route (can be removed in production)
     Route::get('test-email', function () {
         Mail::raw('Test email', function ($message) {
-            $message->to('test@example.com')
-                    ->subject('Test Email');
+            $message->to('test@example.com')->subject('Test Email');
         });
     
         return 'Test email sent!';
     });
-
-    Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])
-    ->name('verification.verify');
-
-Route::get('/verify-redirect/{id}', function ($id) {
-    return redirect()->away(
-        config('app.deep_link_scheme').'://verify?'.http_build_query([
-            'user_id' => $id,
-            'verified' => true
-        ])
-    );
-})->name('verification.redirect');
 });
-

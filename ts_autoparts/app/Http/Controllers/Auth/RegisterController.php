@@ -110,6 +110,8 @@ class RegisterController extends Controller
         $user = User::where('email', $request->email)->first();
         $user->email_verified_at = Carbon::now();
         $user->save();
+        
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         // Delete the used OTP
         $otpRecord->delete();
@@ -119,6 +121,7 @@ class RegisterController extends Controller
         return response()->json([
             'message' => 'Email verified successfully',
             'user' => $user,
+            'access_token' => $token,
             'email_verified' => true
         ]);
     }

@@ -5,12 +5,14 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OtpController; 
+
 
 // Authentication Routes
 Route::post('/register', [RegisterController::class, 'register']);
@@ -30,6 +32,8 @@ Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/send-otp', [OtpController::class, 'sendOtp']);
 Route::post('/verify-otp', [OtpController::class, 'verifyOtp']);
 Route::post('/resend-otp', [OtpController::class, 'resendOtp']);
+
+Route::post('/auth/google/mobile', [SocialAuthController::class, 'handleMobileGoogleAuth']);
 
 // Authenticated Routes
 Route::middleware('auth:sanctum')->group(function () {
