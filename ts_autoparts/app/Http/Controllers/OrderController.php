@@ -116,4 +116,40 @@ class OrderController extends Controller
             'orders' => $orders
         ]);
     }
+    public function Index()
+    {
+        // Fetch all orders with their related user and order items
+        $orders = Order::with(['user', 'orderItems.product'])
+            ->latest()
+            ->paginate(10);
+
+        return view('admin.orders.index', compact('orders'));
+    }
+
+    /**
+     * Display single order details in admin panel
+     */
+    public function Show(Order $order)
+    {
+        // Load relationships if they're not already loaded
+        $order->load(['user', 'orderItems.product', 'payment']);
+        
+        return view('admin.orders.show', compact('order'));
+    }
+
+    public function updateStatus(Request $request, Order $order)
+    {
+        // Validate the status
+        $request->validate([
+            'status' => 'required|in:pending,processing,completed,cancelled'
+        ]);
+
+        // Update the status of the order
+        $order->status = $request->status;
+        $order->save();
+
+        // Redirect back with a success message
+        return redirect()->route('admin.orders.show', $order->id)
+                         ->with('success', 'Order status updated successfully.');
+    }
 }

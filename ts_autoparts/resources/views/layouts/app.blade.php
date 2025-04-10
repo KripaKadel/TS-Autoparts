@@ -96,10 +96,10 @@
         <a href="{{ route('admin.dashboard') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
             <i class="fas fa-tachometer-alt mr-3"></i> Dashboard
         </a>
-        <a href="{{ route('admin.orders') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
+        <a href="{{ route('admin.orders.index') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
             <i class="fas fa-box mr-3"></i> Orders
         </a>
-        <a href="{{ route('admin.appointments') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
+        <a href="{{ route('admin.appointments.index') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
             <i class="fas fa-calendar-check mr-3"></i> Appointments
         </a>
         <a href="{{ route('admin.products.index') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">

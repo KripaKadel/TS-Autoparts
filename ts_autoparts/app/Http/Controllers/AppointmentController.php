@@ -91,4 +91,22 @@ class AppointmentController extends Controller
             ], 500);
         }
     }
+    public function index()
+    {
+        // Fetch all appointments with their related user and mechanic
+        $appointments = Appointment::with(['user', 'mechanic'])
+            ->latest()
+            ->paginate(10);
+
+        // Return the view with appointments data
+        return view('admin.appointments.index', compact('appointments'));
+    }
+
+    public function show(Appointment $appointment)
+    {
+        // Load relationships if they're not already loaded
+        $appointment->load(['user', 'mechanic']);
+        
+        return view('admin.appointments.show', compact('appointment'));
+    }
 }
