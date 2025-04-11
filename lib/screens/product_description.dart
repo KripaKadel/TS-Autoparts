@@ -14,7 +14,8 @@ class ProductDescriptionPage extends StatefulWidget {
 
 class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
   int quantity = 1;
-  final double rating = 3.4;
+  double rating = 3.4;
+  double userRating = 0;
 
   // Method to add product to cart
   Future<void> addToCart(Product product, int quantity) async {
@@ -65,6 +66,18 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
     }
   }
 
+  // Method to handle star rating
+  void _onRatingUpdate(double value) {
+    setState(() {
+      userRating = value;
+    });
+    // Here you would typically send this rating to your backend
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('You rated this product ${value.toInt()} stars!'),
+      backgroundColor: Colors.green,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,6 +89,25 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
           icon: Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        // Add rating to app bar on the same line as back arrow
+        actions: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.star, color: Colors.amber, size: 18),
+                SizedBox(width: 4),
+                Text(
+                  '$rating',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -112,35 +144,40 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product Name and Rating
+                  // Product Name and Interactive Star Rating
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        widget.product.name,
-                        style: TextStyle(
-                          fontSize: 20, 
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                      Expanded(
+                        child: Text(
+                          widget.product.name,
+                          style: TextStyle(
+                            fontSize: 20, 
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
+                      // Interactive five stars rating
                       Row(
-                        children: [
-                          Icon(Icons.star, color: Colors.amber, size: 18),
-                          SizedBox(width: 4),
-                          Text(
-                            '$rating',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                        children: List.generate(5, (index) {
+                          return GestureDetector(
+                            onTap: () => _onRatingUpdate(index + 1.0),
+                            child: Icon(
+                              index < userRating
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: Colors.amber,
+                              size: 24,
                             ),
-                          ),
-                        ],
+                          );
+                        }),
                       ),
                     ],
                   ),
                   SizedBox(height: 12),
-                   // Price
+                  // Price
                   Text(
                     'Rs. ${widget.product.price.toStringAsFixed(0)}',
                     style: TextStyle(

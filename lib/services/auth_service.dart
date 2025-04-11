@@ -197,20 +197,31 @@ class AuthService {
 
    // Login a user
   Future<User?> loginUser(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password}),
-    );
+  final response = await http.post(
+    Uri.parse('$baseUrl/api/login'),
+    headers: {'Content-Type': 'application/json'},
+    body: json.encode({'email': email, 'password': password}),
+  );
 
-    if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      return User.fromJson(responseBody);
-    } else {
-      print('Login failed: ${response.body}');
-      return null;
-    }
+  if (response.statusCode == 200) {
+    final responseBody = json.decode(response.body);
+
+    final userJson = responseBody['user'];
+    final token = responseBody['access_token'];
+
+    // Inject token into the user JSON so User.fromJson works properly
+    final user = User.fromJson({
+      ...userJson,
+      'access_token': token,
+    });
+
+    return user;
+  } else {
+    print('Login failed: ${response.body}');
+    return null;
   }
+}
+
 
   Future<User?> getAuthenticatedUser() async {
     try {

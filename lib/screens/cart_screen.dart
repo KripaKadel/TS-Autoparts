@@ -16,11 +16,19 @@ class _CartScreenState extends State<CartScreen> {
   double totalAmount = 0.0;
   bool isProcessingPayment = false;
   final Color primaryColor = const Color(0xFF144FAB);
+  TextEditingController _addressController = TextEditingController();
+  String _deliveryAddress = '';
 
   @override
   void initState() {
     super.initState();
     fetchCartItems();
+  }
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchCartItems() async {
@@ -146,7 +154,7 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  void _showPaymentDialog() {
+  void _showAddressDialog() {
     if (cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Your cart is empty!')),
@@ -161,10 +169,83 @@ class _CartScreenState extends State<CartScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+          title: const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _addressController,
+                decoration: InputDecoration(
+                  hintText: 'Enter your full delivery address',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                ),
+                maxLines: 3,
+                keyboardType: TextInputType.streetAddress,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Please provide your complete address for delivery',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              onPressed: () {
+                if (_addressController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please enter your delivery address')),
+                  );
+                  return;
+                }
+                setState(() {
+                  _deliveryAddress = _addressController.text.trim();
+                });
+                Navigator.pop(context);
+                _showPaymentDialog();
+              },
+              child: const Text('Continue', 
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPaymentDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Text('Delivery to:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              SizedBox(height: 4),
+              Text(_deliveryAddress, 
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
               const Text('Total Amount:', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
               Text('Rs.${totalAmount.toStringAsFixed(2)}', 
@@ -301,6 +382,7 @@ class _CartScreenState extends State<CartScreen> {
           'payment_reference': referenceId,
           'total_amount': totalAmount,
           'order_items': orderItems,
+          'delivery_address': _deliveryAddress,
         }),
       );
 
@@ -339,6 +421,8 @@ class _CartScreenState extends State<CartScreen> {
         setState(() {
           cartItems.clear();
           totalAmount = 0.0;
+          _addressController.clear();
+          _deliveryAddress = '';
         });
       }
     } catch (e) {
@@ -611,7 +695,7 @@ class _CartScreenState extends State<CartScreen> {
                       ElevatedButton(
                         onPressed: cartItems.isEmpty 
                             ? null 
-                            : _showPaymentDialog,
+                            : _showAddressDialog,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue[900],
                           minimumSize: Size(double.infinity, 50),

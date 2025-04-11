@@ -1,10 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // for secure storage
+import 'package:ts_autoparts_app/utils/secure_storage.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
-  // Function to show the logout confirmation dialog
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String _username = 'Loading...';
+  String _email = '';
+  String? _profileImagePath; // for profile image if available
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final username = await SecureStorage.getUsername() ?? 'Unknown';
+    final email = await SecureStorage.getEmail() ?? '';
+    //final profileImage = await SecureStorage.getProfileImage(); // Optional
+
+    setState(() {
+      _username = username;
+      _email = email;
+      //_profileImagePath = profileImage;
+    });
+
+    debugPrint('Retrieved username: $_username');
+    debugPrint('Retrieved email: $_email');
+    debugPrint('Retrieved image: $_profileImagePath');
+  }
+
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -14,25 +44,15 @@ class ProfileScreen extends StatelessWidget {
           content: const Text('Do you want to logout?'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text('No'),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context); // Close the dialog
-
-                // Clear the stored token (or session data)
-                const storage = FlutterSecureStorage();
-                await storage.delete(key: 'access_token'); // Deleting the token
-
-                // Navigate to the login screen and remove all previous routes
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/login', // Replace with your login route name
-                  (route) => false, // Remove all previous routes
-                );
+                Navigator.pop(context);
+                await SecureStorage.deleteToken();
+                await SecureStorage.deleteUserInfo();
+                Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
               },
               child: const Text('Yes'),
             ),
@@ -44,50 +64,48 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Define the custom color #144FAB
-    final Color customBlue = Color(0xFF144FAB);
+    final Color customBlue = const Color(0xFF144FAB);
 
     return Scaffold(
       backgroundColor: customBlue,
       body: SafeArea(
         child: Column(
           children: [
-            // Top blue section with profile info
             Container(
               padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
               color: customBlue,
               child: Row(
                 children: [
-                  // Profile image
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
-                      image: const DecorationImage(
-                        image: AssetImage('assets/images/profile.jpg'), // Correct path to your image
+                      image: DecorationImage(
+                        image: _profileImagePath != null
+                            ? NetworkImage(_profileImagePath!)
+                            : const AssetImage('assets/images/profile.jpg') as ImageProvider,
                         fit: BoxFit.cover,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  // User info
+                  const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'John Dahson',
-                        style: TextStyle(
+                        _username,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
                       ),
                       Text(
-                        'johndahson@gmail.com',
-                        style: TextStyle(
-                          color: Colors.white,
+                        _email,
+                        style: const TextStyle(
+                          color: Colors.white70,
                           fontSize: 14,
                         ),
                       ),
@@ -96,8 +114,6 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-            // White menu section
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -113,10 +129,10 @@ class ProfileScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      // Menu items
                       _buildMenuItem(Icons.edit, 'Edit Profile', customColor: customBlue),
                       _buildMenuItem(Icons.lock, 'Change Password', customColor: customBlue),
-                      _buildMenuItem(Icons.email, 'Change Email Address', customColor: customBlue),
+                      _buildMenuItem(Icons.calendar_today, 'My Appointments', customColor: customBlue),
+                      _buildMenuItem(Icons.shopping_bag, 'My Orders', customColor: customBlue),
                       _buildMenuItem(Icons.settings, 'Settings', customColor: customBlue),
                       _buildMenuItem(Icons.help, 'Help', customColor: customBlue),
                       _buildMenuItem(Icons.info, 'About', customColor: customBlue),
@@ -132,7 +148,8 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title, {bool isLogOut = false, Color customColor = Colors.blue, BuildContext? context}) {
+  Widget _buildMenuItem(IconData icon, String title,
+      {bool isLogOut = false, Color customColor = Colors.blue, BuildContext? context}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -141,7 +158,6 @@ class ProfileScreen extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, 1),
           ),
@@ -151,7 +167,6 @@ class ProfileScreen extends StatelessWidget {
         leading: Icon(
           icon,
           color: isLogOut ? Colors.red : customColor,
-          size: 24,
         ),
         title: Text(
           title,
@@ -160,16 +175,12 @@ class ProfileScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: Colors.grey,
-        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         onTap: () {
           if (isLogOut) {
             _showLogoutDialog(context!);
           } else {
-            // Handle other navigation or actions here
+            // Handle other actions
           }
         },
       ),

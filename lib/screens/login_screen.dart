@@ -23,29 +23,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Handle login
   Future<void> _login() async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  final user = await _authService.loginUser(
+    _emailController.text.trim(),
+    _passwordController.text.trim(),
+  );
+
+  if (user != null) {
+    print("User info from loginUser():");
+    print("Name: ${user.name}");
+    print("Email: ${user.email}");
+
+    // Save all required user details securely
+    await SecureStorage.saveToken(user.accessToken);
+    await SecureStorage.saveUsername(user.name); // <-- Save the name
+    await SecureStorage.saveEmail(user.email);   // <-- Save the email
+    // if (user.profileImage != null) {
+    //   await SecureStorage.saveProfileImage(user.profileImage!);
+    // }
+
+    Navigator.pushReplacementNamed(context, '/home');
+  } else {
     setState(() {
-      _isLoading = true;
-      _errorMessage = null; // Clear any previous error messages
+      _isLoading = false;
+      _errorMessage = 'Invalid email or password';
     });
-
-    final user = await _authService.loginUser(
-      _emailController.text,
-      _passwordController.text,
-    );
-
-    if (user != null) {
-      // Save the token securely
-      await SecureStorage.saveToken(user.accessToken);
-
-      // Navigate to home screen or authenticated area
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Invalid email or password'; // Show specific error message
-      });
-    }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -54,4 +54,5 @@ class SecureStorage {
     await _storage.delete(key: 'email');
     print('User info deleted successfully'); // Debug log
   }
+  
 }

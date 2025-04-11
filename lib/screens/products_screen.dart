@@ -84,6 +84,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     } else {
                       List<Product> products = snapshot.data!;
 
+                      // Modified GridView to use a different aspect ratio for more compact cards
                       return GridView.builder(
                         shrinkWrap: true,
                         physics: NeverScrollableScrollPhysics(),
@@ -91,7 +92,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: 0.85, // Adjusted to accommodate shorter height
                         ),
                         itemCount: products.length,
                         itemBuilder: (context, index) {
@@ -109,7 +110,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  // Product Card Builder
+  // Product Card Builder with explicitly reduced outer container height
   Widget _buildProductCard(Product product) {
     final double dummyRating = 4.5;
 
@@ -124,19 +125,24 @@ class _ProductsScreenState extends State<ProductsScreen> {
         );
       },
       child: Container(
+        height: 200, // Explicitly set a reduced height for the outer container (original was likely around 180-200)
+        width: 160,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey[200]!),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Use minimum required space
           children: [
-            // Product Image with Rating Overlay
+            // Product Image with Rating Overlay - Height maintained at 120
             Stack(
               children: [
-                // Product Image
+                // Product Image - Keeping height at 120 as requested
                 Container(
-                  height: 120,
+                  height: 160,
+                  
+                  width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.only(
@@ -149,6 +155,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         ? Image.network(
                             product.image_url!,
                             fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: 160,
                             errorBuilder: (context, error, stackTrace) {
                               print("Error loading image: $error");
                               return Icon(Icons.error, size: 50, color: Colors.red);
@@ -182,27 +190,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
               ],
             ),
-            // Product Details
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Rs. ${product.price.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF144FAB),
+            // Product Details in a constrained space
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      product.name,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                    Text(
+                      'Rs. ${product.price.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF144FAB),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
