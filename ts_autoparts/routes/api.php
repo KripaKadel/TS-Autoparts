@@ -24,8 +24,12 @@ Route::post('/forgot-password', [ForgotPasswordController::class, 'requestReset'
 Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword']);
 
 // Public Routes
-Route::get('/mechanics', [AppointmentController::class, 'getMechanics']);
-Route::post('/appointments', [AppointmentController::class, 'store']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/appointments/user', [AppointmentController::class, 'getUserAppointments']);
+    Route::patch('/appointments/{id}/cancel', [AppointmentController::class, 'cancel']);
+    Route::post('/appointments', [AppointmentController::class, 'store']);
+    Route::get('/mechanics', [AppointmentController::class, 'getMechanics']);
+});
 Route::get('/products', [ProductController::class, 'apiIndex']);
 Route::get('/categories', [CategoryController::class, 'index']);
 
