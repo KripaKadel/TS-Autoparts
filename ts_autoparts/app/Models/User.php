@@ -34,6 +34,12 @@ class User extends Authenticatable implements MustVerifyEmail // Implement MustV
     const ROLE_CUSTOMER = 'customer';
     const ROLE_MECHANIC = 'mechanic';
 
+    public function getProfileImageUrlAttribute()
+{
+    return $this->profile_image ? asset('storage/' . $this->profile_image) : null;
+}
+
+
     public function sendEmailVerificationNotification()
     {
         $this->notify(new VerifyEmail());

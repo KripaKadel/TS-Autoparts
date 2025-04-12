@@ -40,6 +40,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // User Routes
     Route::get('/user', [UserController::class, 'getAuthenticatedUser']);
     Route::apiResource('users', UserController::class);
+    Route::post('user/profile/update', [UserController::class, 'updateProfile']);
+
 
     // Cart Routes
     Route::get('/cart', [CartController::class, 'getCart']);
