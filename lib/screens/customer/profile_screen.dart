@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ts_autoparts_app/screens/customer/editprofile_screen.dart';
 import 'package:ts_autoparts_app/screens/customer/change_password.dart'; // Import the ChangePasswordScreen
+import 'package:ts_autoparts_app/screens/customer/my_appointments.dart'; // Import MyAppointmentsScreen
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -142,11 +143,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       _buildMenuItem(Icons.edit, 'Edit Profile', customColor: customBlue, context: context),
                       _buildMenuItem(Icons.lock, 'Change Password', customColor: customBlue, context: context), // Handle Change Password
-                      _buildMenuItem(Icons.calendar_today, 'My Appointments', customColor: customBlue),
-                      _buildMenuItem(Icons.shopping_bag, 'My Orders', customColor: customBlue),
-                      _buildMenuItem(Icons.settings, 'Settings', customColor: customBlue),
-                      _buildMenuItem(Icons.help, 'Help', customColor: customBlue),
-                      _buildMenuItem(Icons.info, 'About', customColor: customBlue),
+                      _buildMenuItem(Icons.calendar_today, 'My Appointments', customColor: customBlue, context: context),
+                      _buildMenuItem(Icons.shopping_bag, 'My Orders', customColor: customBlue, context: context),
+                      _buildMenuItem(Icons.settings, 'Settings', customColor: customBlue, context: context),
+                      _buildMenuItem(Icons.help, 'Help', customColor: customBlue, context: context),
+                      _buildMenuItem(Icons.info, 'About', customColor: customBlue, context: context),
                       _buildMenuItem(Icons.logout, 'Log Out', isLogOut: true, context: context),
                     ],
                   ),
@@ -202,15 +203,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 MaterialPageRoute(builder: (context) => const EditProfileScreen()),
               );
               if (result == true) {
-                _loadUserInfo(); // 🔄 Refresh profile info after editing
+                _loadUserInfo(); // Refresh profile info after editing
               }
             } else if (title == 'Change Password') {  // Navigate to Change Password Screen
               await Navigator.push(
                 context!,
                 MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
               );
-            }
-            // Add more navigation logic if needed
+            } else if (title == 'My Appointments') {
+              await Navigator.push(
+                context!,
+                MaterialPageRoute(builder: (context) => const MyAppointmentsScreen()),
+              );
+            } 
+            // You can add more cases like 'My Orders', etc. here as needed
           }
         },
       ),
