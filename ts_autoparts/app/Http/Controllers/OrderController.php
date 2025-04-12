@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Cart;
@@ -13,6 +12,9 @@ use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
+    /**
+     * Create an order from cart items
+     */
     public function createOrder(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -40,7 +42,7 @@ class OrderController extends Controller
             if ($cartItems->isEmpty()) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Cart is empty'
+                    'message' => 'Your cart is empty.'
                 ], 400);
             }
 
@@ -51,12 +53,12 @@ class OrderController extends Controller
                 'total_amount' => $request->total_amount,
             ]);
 
-            foreach ($cartItems as $cartItem) {
+            foreach ($cartItems as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
-                    'product_id' => $cartItem->product_id,
-                    'quantity' => $cartItem->quantity,
-                    'price' => $cartItem->product->price,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'price' => $item->product->price,
                 ]);
             }
 
@@ -66,33 +68,50 @@ class OrderController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Order created successfully',
-                'order' => $order->load('orderItems.product'),
+                'message' => 'Order placed successfully.',
+                'order' => $order->load('orderItems.product')
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to create order',
+                'message' => 'Failed to place order.',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Get authenticated user's orders
+     */
+    public function getUserOrders()
+    {
+        $orders = Order::with(['orderItems.product'])
+            ->where('user_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'orders' => $orders
+        ]);
+    }
+
+    /**
+     * Get specific order details (user scope)
+     */
     public function getOrderDetails($orderId)
     {
-        $user = Auth::user();
-
-        $order = Order::with(['orderItems.product', 'payment'])
+        $order = Order::with(['orderItems.product'])
             ->where('id', $orderId)
-            ->where('user_id', $user->id)
+            ->where('user_id', Auth::id())
             ->first();
 
         if (!$order) {
             return response()->json([
                 'status' => false,
-                'message' => 'Order not found'
+                'message' => 'Order not found.'
             ], 404);
         }
 
@@ -102,23 +121,44 @@ class OrderController extends Controller
         ]);
     }
 
-    public function getUserOrders()
+    /**
+     * Cancel user's own order if eligible
+     */
+    public function cancelOrder($id)
     {
-        $user = Auth::user();
+        $order = Order::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
 
-        $orders = Order::with(['orderItems.product', 'payment'])
-            ->where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if (!$order) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Order not found.'
+            ], 404);
+        }
+
+        if (in_array($order->status, ['shipped', 'delivered', 'canceled'])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Order cannot be cancelled at this stage.'
+            ], 400);
+        }
+
+        $order->status = 'canceled';
+        $order->save();
 
         return response()->json([
             'status' => true,
-            'orders' => $orders
+            'message' => 'Order cancelled successfully.',
+            'order' => $order
         ]);
     }
-    public function Index()
+
+    /**
+     * Admin: List all orders
+     */
+    public function index()
     {
-        // Fetch all orders with their related user and order items
         $orders = Order::with(['user', 'orderItems.product'])
             ->latest()
             ->paginate(10);
@@ -127,29 +167,27 @@ class OrderController extends Controller
     }
 
     /**
-     * Display single order details in admin panel
+     * Admin: View single order
      */
-    public function Show(Order $order)
+    public function show(Order $order)
     {
-        // Load relationships if they're not already loaded
-        $order->load(['user', 'orderItems.product', 'payment']);
-        
+        $order->load(['user', 'orderItems.product']);
         return view('admin.orders.show', compact('order'));
     }
 
+    /**
+     * Admin: Update order status
+     */
     public function updateStatus(Request $request, Order $order)
     {
-        // Validate the status
         $request->validate([
-            'status' => 'required|in:pending,processing,completed,cancelled'
+            'status' => 'required|in:pending,processing,shipped,delivered,canceled'
         ]);
 
-        // Update the status of the order
         $order->status = $request->status;
         $order->save();
 
-        // Redirect back with a success message
         return redirect()->route('admin.orders.show', $order->id)
-                         ->with('success', 'Order status updated successfully.');
+                         ->with('success', 'Order status updated.');
     }
 }
