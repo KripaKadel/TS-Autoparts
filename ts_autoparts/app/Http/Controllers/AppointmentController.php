@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Notifications\AppointmentNotification;
 
 class AppointmentController extends Controller
 {
@@ -23,56 +24,45 @@ class AppointmentController extends Controller
      * Store a new appointment
      */
     public function store(Request $request)
-    {
-        try {
-            Log::info('Appointment store called', ['request' => $request->all()]);
+{
+    $validatedData = $request->validate([
+        'user_id' => 'required|exists:users,id',
+        'mechanic_id' => 'required|exists:users,id',
+        'service_description' => 'required|string',
+        'appointment_date' => 'required|date',
+        'time' => 'required|date_format:H:i',
+        'status' => 'required|string',
+    ]);
 
-            $validatedData = $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'mechanic_id' => 'required|exists:users,id',
-                'service_description' => 'required|string',
-                'appointment_date' => 'required|date',
-                'time' => 'required|date_format:H:i',
-                'status' => 'required|string',
-            ]);
+    $appointmentDateTime = $validatedData['appointment_date'] . ' ' . $validatedData['time'];
 
-            $appointmentDateTime = $validatedData['appointment_date'] . ' ' . $validatedData['time'];
+    $existingAppointment = Appointment::where('appointment_date', $appointmentDateTime)
+        ->where('mechanic_id', $validatedData['mechanic_id'])
+        ->first();
 
-            $existingAppointment = Appointment::where('appointment_date', $appointmentDateTime)
-                ->where('mechanic_id', $validatedData['mechanic_id'])
-                ->first();
-
-            if ($existingAppointment) {
-                return response()->json([
-                    'message' => 'The selected time slot is already taken. Please choose another time.',
-                ], 400);
-            }
-
-            $appointment = Appointment::create($validatedData);
-
-            return response()->json([
-                'message' => 'Appointment created successfully',
-                'data' => $appointment,
-            ], 201);
-
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-            ], 422);
-
-        } catch (\Exception $e) {
-            Log::error('Error creating appointment', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'message' => 'An error occurred while creating the appointment',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+    if ($existingAppointment) {
+        return response()->json([
+            'message' => 'The selected time slot is already taken. Please choose another time.',
+        ], 400);
     }
+
+    $appointment = Appointment::create($validatedData);
+
+    // Notify the user
+    $user = User::find($validatedData['user_id']);
+    $user->notify(new AppointmentNotification($appointment, 'booked'));
+
+    // Notify the admin(s)
+    $admins = User::where('role', 'admin')->get();
+    foreach ($admins as $admin) {
+        $admin->notify(new AppointmentNotification($appointment, 'booked'));
+    }
+
+    return response()->json([
+        'message' => 'Appointment created successfully',
+        'data' => $appointment,
+    ], 201);
+}
 
     /**
      * Get appointments for the logged-in user (for mobile app)
@@ -114,6 +104,15 @@ class AppointmentController extends Controller
     
         $appointment->status = 'Canceled';
         $appointment->save();
+    
+        // Notify the user
+        $appointment->user->notify(new AppointmentNotification($appointment, 'canceled'));
+    
+        // Notify the admin(s)
+        $admins = User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new AppointmentNotification($appointment, 'canceled'));
+        }
     
         return response()->json([
             'message' => 'Appointment cancelled successfully',

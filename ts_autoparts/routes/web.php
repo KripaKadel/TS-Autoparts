@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request; // ✅ Add this
+use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\Auth\SocialAuthController;
@@ -8,7 +10,6 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\OrderController;
-use Illuminate\Support\Facades\Mail;
 
 // Public Routes
 Route::middleware('web')->group(function () {
@@ -21,15 +22,15 @@ Route::middleware('web')->group(function () {
     Route::post('/admin/login', [AdminController::class, 'login']);
 });
 
-// Authenticated Admin Routes (requires auth and admin role)
+// Authenticated Admin Routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     // Admin Logout
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
-    
+
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-    
+
     // Appointments Management
     Route::prefix('appointments')->name('appointments.')->controller(AppointmentController::class)->group(function () {
         Route::get('/', 'index')->name('index');
@@ -38,7 +39,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/export/csv', 'exportToCSV')->name('export.csv');
         Route::get('/calendar', 'calendar')->name('calendar');
     });
-    
+
     // Orders Management
     Route::prefix('orders')->name('orders.')->controller(OrderController::class)->group(function () {
         Route::get('/', 'index')->name('index');
@@ -84,7 +85,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/update', [AdminController::class, 'updateSettings'])->name('update');
     });
 
-    // Test email route (development only)
+    // Notifications - mark all as read
+    Route::post('/notifications/mark-read', function (Request $request) {
+        $request->user()->unreadNotifications->markAsRead();
+        return back();
+    })->name('notifications.markRead');
+
+    // Test email route - only in local environment
     if (app()->environment('local')) {
         Route::get('test-email', function () {
             Mail::raw('Test email', function ($message) {

@@ -11,11 +11,108 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg>
                     <a class="text-2xl font-bold tracking-tight" href="#">Admin Dashboard</a>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                        <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold">3</span>
-                    </div>
+                <div class="flex items-center space-x-4 relative">
+                <!-- Notification Bell -->
+<div class="relative">
+    <button id="notificationToggle" class="relative focus:outline-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        @if(auth()->user()->unreadNotifications->count() > 0)
+            <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold">
+                {{ auth()->user()->unreadNotifications->count() }}
+            </span>
+        @endif
+    </button>
+
+    <div id="notificationDropdown"
+
+class="hidden absolute right-0 mt-2 w-80 bg-white rounded shadow-lg z-50 overflow-hidden">
+
+<div class="p-4 border-b text-gray-700 font-semibold">Notifications</div>
+
+<ul class="max-h-64 overflow-y-auto">
+
+@forelse(auth()->user()->unreadNotifications as $notification)
+
+<li class="hover:bg-gray-100 border-b">
+
+@if(isset($notification->data['appointment_id']))
+
+<a href="{{ route('admin.appointments.show', $notification->data['appointment_id']) }}"
+
+class="block px-4 py-3 text-sm text-gray-800">
+
+{{ $notification->data['message'] }}
+
+<span class="block text-xs text-gray-500 mt-1">
+
+Status: {{ $notification->data['status'] }}
+
+</span>
+
+</a>
+
+@elseif(isset($notification->data['order_id']))
+
+<a href="{{ route('admin.orders.show', $notification->data['order_id']) }}"
+
+class="block px-4 py-3 text-sm text-gray-800">
+
+{{ $notification->data['message'] }}
+
+<span class="block text-xs text-gray-500 mt-1">
+
+Status: {{ $notification->data['status'] }}
+
+</span>
+
+</a>
+
+@else
+
+<div class="px-4 py-3 text-sm text-gray-800">
+
+{{ $notification->data['message'] ?? 'Notification update' }}
+
+</div>
+
+@endif
+
+</li>
+
+@empty
+
+<li class="px-4 py-3 text-sm text-gray-500">No new notifications</li>
+
+@endforelse
+
+</ul>
+
+<div class="p-2 text-center border-t">
+
+<form method="POST" action="{{ route('admin.notifications.markRead') }}">
+
+@csrf
+
+<button type="submit"
+
+class="text-xs text-indigo-600 hover:underline font-medium">
+
+Mark all as read
+
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+</div>
+
                     <div class="flex items-center">
                         <div class="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold mr-2">A</div>
                         <span class="font-medium">Admin User</span>
@@ -255,4 +352,21 @@
             </div>
         </div>
     </div>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggle = document.getElementById('notificationToggle');
+        const dropdown = document.getElementById('notificationDropdown');
+
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+    });
+</script>
 @endsection
