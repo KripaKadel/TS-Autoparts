@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ts_autoparts_app/screens/editprofile_screen.dart';
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -11,7 +12,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String _username = 'Loading...';
   String _email = '';
-  String? _profileImagePath; // for profile image if available
+  String? _profileImagePath;
 
   @override
   void initState() {
@@ -22,12 +23,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserInfo() async {
     final username = await SecureStorage.getUsername() ?? 'Unknown';
     final email = await SecureStorage.getEmail() ?? '';
-    //final profileImage = await SecureStorage.getProfileImage(); // Optional
+    final profileImage = await SecureStorage.getProfileImage();
 
     setState(() {
       _username = username;
       _email = email;
-      //_profileImagePath = profileImage;
+      _profileImagePath = profileImage;
     });
 
     debugPrint('Retrieved username: $_username');
@@ -62,6 +63,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  ImageProvider _getProfileImage() {
+    if (_profileImagePath != null &&
+        _profileImagePath!.isNotEmpty &&
+        _profileImagePath!.startsWith('http')) {
+      final cacheBustedUrl = '$_profileImagePath?v=${DateTime.now().millisecondsSinceEpoch}';
+      return NetworkImage(cacheBustedUrl);
+    } else {
+      return const AssetImage('assets/images/profile.jpg');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color customBlue = const Color(0xFF144FAB);
@@ -83,9 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                       image: DecorationImage(
-                        image: _profileImagePath != null
-                            ? NetworkImage(_profileImagePath!)
-                            : const AssetImage('assets/images/profile.jpg') as ImageProvider,
+                        image: _getProfileImage(),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -129,7 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      _buildMenuItem(Icons.edit, 'Edit Profile', customColor: customBlue),
+                      _buildMenuItem(Icons.edit, 'Edit Profile', customColor: customBlue, context: context),
                       _buildMenuItem(Icons.lock, 'Change Password', customColor: customBlue),
                       _buildMenuItem(Icons.calendar_today, 'My Appointments', customColor: customBlue),
                       _buildMenuItem(Icons.shopping_bag, 'My Orders', customColor: customBlue),
@@ -148,8 +158,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title,
-      {bool isLogOut = false, Color customColor = Colors.blue, BuildContext? context}) {
+  Widget _buildMenuItem(
+    IconData icon,
+    String title, {
+    bool isLogOut = false,
+    Color customColor = Colors.blue,
+    BuildContext? context,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -176,11 +191,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        onTap: () {
+        onTap: () async {
           if (isLogOut) {
             _showLogoutDialog(context!);
           } else {
-            // Handle other actions
+            if (title == 'Edit Profile') {
+              final result = await Navigator.push(
+                context!,
+                MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+              );
+              if (result == true) {
+                _loadUserInfo(); // 🔄 Refresh profile info after editing
+              }
+            }
+            // Add more navigation logic if needed
           }
         },
       ),

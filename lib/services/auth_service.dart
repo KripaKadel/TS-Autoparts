@@ -7,9 +7,10 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ts_autoparts_app/models/user.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:ts_autoparts_app/constant/const.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['openid', 'email', 'profile'],
@@ -253,6 +254,7 @@ class AuthService {
       return null;
     }
   }
+  
 
   Future<String?> getCurrentToken() async {
     return await _storage.read(key: 'access_token');
@@ -390,4 +392,62 @@ Future<String?> getStoredEmail() async {
 Future<String?> getStoredPassword() async {
   return await _storage.read(key: 'remembered_password');
 }
+Future<Map<String, dynamic>?> updateUserProfile({
+  required String name,
+  required String phone,
+  File? profileImage,
+}) async {
+  try {
+    final token = await _storage.read(key: 'access_token');
+    if (token == null) {
+      throw Exception("User token is missing.");
+    }
+
+    final uri = Uri.parse('$baseUrl/api/user/profile/update');
+
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..fields['name'] = name
+      ..fields['phone_number'] = phone;
+
+    if (profileImage != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'profile_image',
+        profileImage.path,
+      ));
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    debugPrint('Update Profile Status Code: ${response.statusCode}');
+    debugPrint('Update Profile Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      final userData = responseData['user'];
+
+      // Update local storage
+      await _storage.write(key: 'user_data', value: jsonEncode(userData));
+      await _storage.write(key: 'username', value: userData['name']);
+      await _storage.write(key: 'email', value: userData['email']);
+      await _storage.write(key: 'phone_number', value: userData['phone_number']);
+      
+      if (userData['profile_image'] != null) {
+        await _storage.write(key: 'profile_image', value: userData['profile_image']);
+      }
+
+      return userData;
+    } else {
+      // Show response details for debugging
+      debugPrint("Failed to update profile: ${response.body}");
+      return null;
+    }
+  } catch (e) {
+    debugPrint('Exception during profile update: $e');
+    return null;
+  }
+}
+
+
 }

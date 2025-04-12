@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/function/esewa.dart';
 import 'package:http/http.dart' as http;
+import 'package:ts_autoparts_app/constant/const.dart';
+
 import 'dart:convert';
 
 class ServicesScreen extends StatefulWidget {
@@ -59,7 +61,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     try {
       final token = await _getToken();
       final response = await http.get(
-        Uri.parse('${AuthService.baseUrl}/api/mechanics'),
+        Uri.parse('$baseUrl/api/mechanics'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -229,7 +231,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           '${selectedTime.minute.toString().padLeft(2, '0')}';
 
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/appointments'),
+        Uri.parse('$baseUrl/appointments'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

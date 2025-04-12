@@ -42,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await SecureStorage.saveToken(user.accessToken);
     await SecureStorage.saveUsername(user.name); // <-- Save the name
     await SecureStorage.saveEmail(user.email);   // <-- Save the email
+    
     // if (user.profileImage != null) {
     //   await SecureStorage.saveProfileImage(user.profileImage!);
     // }

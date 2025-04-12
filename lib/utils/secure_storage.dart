@@ -3,56 +3,82 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureStorage {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  // Save the token securely
+  // ==================== TOKEN ====================
   static Future<void> saveToken(String token) async {
     await _storage.write(key: 'access_token', value: token);
-    print('Token saved successfully: $token'); // Debug log
+    print('Token saved successfully: $token');
   }
 
-  // Get the token securely
   static Future<String?> getToken() async {
     final token = await _storage.read(key: 'access_token');
-    print('Retrieved token: $token'); // Debug log
+    print('Retrieved token: $token');
     return token;
   }
 
-  // Delete the token
   static Future<void> deleteToken() async {
     await _storage.delete(key: 'access_token');
-    print('Token deleted successfully'); // Debug log
+    print(' Token deleted successfully');
   }
 
-  // Save the username securely
+  // ==================== USERNAME ====================
   static Future<void> saveUsername(String username) async {
     await _storage.write(key: 'username', value: username);
-    print('Username saved successfully: $username'); // Debug log
+    print(' Username saved successfully: $username');
   }
 
-  // Get the username securely
   static Future<String?> getUsername() async {
     final username = await _storage.read(key: 'username');
-    print('Retrieved username: $username'); // Debug log
+    print(' Retrieved username: $username');
     return username;
   }
 
-  // Save the email securely
+  // ==================== EMAIL ====================
   static Future<void> saveEmail(String email) async {
     await _storage.write(key: 'email', value: email);
-    print('Email saved successfully: $email'); // Debug log
+    print(' Email saved successfully: $email');
   }
 
-  // Get the email securely
   static Future<String?> getEmail() async {
     final email = await _storage.read(key: 'email');
-    print('Retrieved email: $email'); // Debug log
+    print(' Retrieved email: $email');
     return email;
   }
 
-  // Delete the username and email (if needed)
+  // ==================== PHONE NUMBER ====================
+  static Future<void> savePhoneNumber(String phone) async {
+    await _storage.write(key: 'phone_number', value: phone);
+    print(' Phone number saved successfully: $phone');
+  }
+
+  static Future<String?> getPhoneNumber() async {
+    final phone = await _storage.read(key: 'phone_number');
+    print('Retrieved phone number: $phone');
+    return phone;
+  }
+
+  // ==================== PROFILE IMAGE ====================
+  static Future<void> saveProfileImage(String imageUrl) async {
+    await _storage.write(key: 'profile_image', value: imageUrl);
+    print('Profile image saved successfully: $imageUrl');
+  }
+
+  static Future<String?> getProfileImage() async {
+    final imageUrl = await _storage.read(key: 'profile_image');
+    print(' Retrieved profile image URL: $imageUrl');
+    return imageUrl;
+  }
+
+  // ==================== DELETE EVERYTHING ====================
   static Future<void> deleteUserInfo() async {
     await _storage.delete(key: 'username');
     await _storage.delete(key: 'email');
-    print('User info deleted successfully'); // Debug log
+    await _storage.delete(key: 'phone_number');
+    await _storage.delete(key: 'profile_image');
+    print(' User info deleted successfully');
   }
-  
+
+  static Future<void> clearAll() async {
+    await _storage.deleteAll();
+    print(' All secure storage data cleared');
+  }
 }

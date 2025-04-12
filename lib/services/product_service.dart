@@ -1,18 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
+import 'package:ts_autoparts_app/constant/const.dart';
 
 class ProductService {
-  // Base URL for the API (you can switch between local and production URLs)
-  static const String baseUrl = 'http://10.0.2.2:8000/api'; // For Android emulator
-  // static const String baseUrl = 'http://192.168.1.64:8000/api'; // For physical device
-  // static const String baseUrl = 'http://192.168.18.153:8000/api'; // For another network
-
+  
   // Fetch all products
   Future<List<Product>> fetchProducts() async {
     try {
       // Make the HTTP GET request to the API
-      final response = await http.get(Uri.parse('$baseUrl/products'));
+      final response = await http.get(Uri.parse('$baseUrl/api/products'));
 
       // Check if the request was successful (status code 200)
       if (response.statusCode == 200) {
@@ -37,7 +34,7 @@ class ProductService {
   Future<Product> fetchProductById(int id) async {
     try {
       // Make the HTTP GET request to the API
-      final response = await http.get(Uri.parse('$baseUrl/products/$id'));
+      final response = await http.get(Uri.parse('$baseUrl/api/products/$id'));
 
       // Check if the request was successful (status code 200)
       if (response.statusCode == 200) {
