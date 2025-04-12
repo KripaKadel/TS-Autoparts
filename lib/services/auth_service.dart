@@ -404,7 +404,6 @@ Future<String?> getStoredPassword() async {
 }
 Future<Map<String, dynamic>?> updateUserProfile({
   required String name,
-  required String phone,
   File? profileImage,
 }) async {
   try {
@@ -417,8 +416,8 @@ Future<Map<String, dynamic>?> updateUserProfile({
 
     final request = http.MultipartRequest('POST', uri)
       ..headers['Authorization'] = 'Bearer $token'
-      ..fields['name'] = name
-      ..fields['phone_number'] = phone;
+      ..fields['name'] = name;
+  
 
     if (profileImage != null) {
       request.files.add(await http.MultipartFile.fromPath(

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
-import 'package:ts_autoparts_app/services/product_service.dart'; // Import the ProductService
-import 'package:ts_autoparts_app/screens/customer/product_description.dart'; // Import the ProductDescriptionPage
+import 'package:ts_autoparts_app/models/product.dart';
+import 'package:ts_autoparts_app/services/product_service.dart';
+import 'package:ts_autoparts_app/screens/customer/product_description.dart';
+import 'package:ts_autoparts_app/utils/secure_storage.dart';
 
 class ProductsScreen extends StatefulWidget {
   @override
@@ -11,11 +12,20 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   late Future<List<Product>> futureProducts;
+  String? profileImageUrl;
 
   @override
   void initState() {
     super.initState();
-    futureProducts = ProductService().fetchProducts(); // Fetch products
+    futureProducts = ProductService().fetchProducts();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final imageUrl = await SecureStorage.getProfileImage();
+    setState(() {
+      profileImageUrl = imageUrl;
+    });
   }
 
   @override
@@ -27,16 +37,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
             padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               children: [
-                // App Bar with Logo and Profile picture
+                // App Bar with Logo and tappable Profile picture
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Logo
                       SvgPicture.asset('assets/images/BLogo.svg', height: 40),
-                      // Profile Picture
-                      CircleAvatar(backgroundImage: AssetImage('assets/images/profile.jpg')),
+                      GestureDetector(
+                        onTap: () {
+                           Navigator.pushNamed(context, '/profile');
+                          
+                        },
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundImage: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                              ? NetworkImage(profileImageUrl!)
+                              : AssetImage('assets/images/profile.jpg') as ImageProvider,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -83,8 +102,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       return Center(child: Text('No products found'));
                     } else {
                       List<Product> products = snapshot.data!;
-
-                      // Modified GridView to use a different aspect ratio for more compact cards
                       return GridView.builder(
                         shrinkWrap: true,
                         physics: NeverScrollableScrollPhysics(),
@@ -92,7 +109,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 0.85, // Adjusted to accommodate shorter height
+                          childAspectRatio: 0.85,
                         ),
                         itemCount: products.length,
                         itemBuilder: (context, index) {
@@ -110,13 +127,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  // Product Card Builder with explicitly reduced outer container height
+  // Product Card Builder
   Widget _buildProductCard(Product product) {
     final double dummyRating = 4.5;
 
     return GestureDetector(
       onTap: () {
-        // Navigate to the Product Description Page
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -125,7 +141,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         );
       },
       child: Container(
-        height: 200, // Explicitly set a reduced height for the outer container (original was likely around 180-200)
+        height: 200,
         width: 160,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey[200]!),
@@ -133,15 +149,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Use minimum required space
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Product Image with Rating Overlay - Height maintained at 120
             Stack(
               children: [
-                // Product Image - Keeping height at 120 as requested
                 Container(
                   height: 160,
-                  
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
@@ -165,7 +178,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         : Icon(Icons.image, size: 50, color: Colors.grey[700]),
                   ),
                 ),
-                // Rating in Top-Right Corner
                 Positioned(
                   top: 8,
                   right: 8,
@@ -190,7 +202,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 ),
               ],
             ),
-            // Product Details in a constrained space
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),

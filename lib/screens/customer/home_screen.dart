@@ -4,6 +4,7 @@ import 'package:ts_autoparts_app/main.dart';
 import 'package:ts_autoparts_app/services/product_service.dart'; // Import the ProductService
 import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
 import 'package:ts_autoparts_app/screens/customer/services_screen.dart'; // Assuming ServiceScreen is in service_screen.dart
+import 'package:ts_autoparts_app/utils/secure_storage.dart';
 
 void main() {
   runApp(MyApp());
@@ -47,11 +48,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Product>> futureProducts;
+  String? profileImageUrl;
 
   @override
   void initState() {
     super.initState();
-    futureProducts = ProductService().fetchProducts(); // Fetch products
+    futureProducts = ProductService().fetchProducts();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final imageUrl = await SecureStorage.getProfileImage();
+    setState(() {
+      profileImageUrl = imageUrl;
+    });
   }
 
   @override
@@ -63,20 +73,30 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               children: [
-                // App Bar with Logo and Profile picture
+                // App Bar with Logo and tappable Profile picture
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Logo
                       SvgPicture.asset('assets/images/BLogo.svg', height: 40),
-                      // Profile Picture
-                      CircleAvatar(backgroundImage: AssetImage('assets/images/profile.jpg')),
+                      GestureDetector(
+                        onTap: () {
+                           Navigator.pushNamed(context, '/profile');
+                          
+                        },
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundImage: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                              ? NetworkImage(profileImageUrl!)
+                              : AssetImage('assets/images/profile.jpg') as ImageProvider,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 SizedBox(height: 16),
+              
 
                 // Search bar
                 Container(

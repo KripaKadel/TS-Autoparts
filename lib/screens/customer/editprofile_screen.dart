@@ -13,12 +13,8 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-
   bool _isLoading = false;
-
   File? _image;
   String? _existingImageUrl;
 
@@ -35,12 +31,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     final username = await SecureStorage.getUsername();
-    final phone = await SecureStorage.getPhoneNumber();
     final profileImageUrl = await SecureStorage.getProfileImage();
 
     setState(() {
       _nameController.text = username ?? '';
-      _phoneController.text = phone ?? '';
       _existingImageUrl = profileImageUrl;
       _isLoading = false;
     });
@@ -66,13 +60,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final updatedUser = await _authService.updateUserProfile(
       name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
       profileImage: _image,
     );
 
     if (updatedUser != null) {
       await SecureStorage.saveUsername(updatedUser['name']);
-      await SecureStorage.savePhoneNumber(updatedUser['phone_number']);
 
       if (updatedUser['profile_image'] != null) {
         await SecureStorage.saveProfileImage(updatedUser['profile_image']);
@@ -85,7 +77,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Profile updated successfully")),
       );
-       Navigator.pop(context);
+      Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to update profile")),
@@ -111,7 +103,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -189,26 +180,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             }
                             if (value.length < 3) {
                               return 'Username must be at least 3 characters';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _phoneController,
-                          decoration: const InputDecoration(
-                            labelText: "Phone Number",
-                            prefixIcon: Icon(Icons.phone),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter phone number';
-                            }
-                            if (!RegExp(r'^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$')
-                                .hasMatch(value)) {
-                              return 'Enter a valid phone number';
                             }
                             return null;
                           },
