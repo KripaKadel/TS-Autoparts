@@ -41,6 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [UserController::class, 'getAuthenticatedUser']);
     Route::apiResource('users', UserController::class);
     Route::post('user/profile/update', [UserController::class, 'updateProfile']);
+    Route::post('/user/change-password', [UserController::class, 'changePassword']);
+
 
 
     // Cart Routes

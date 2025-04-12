@@ -40,7 +40,7 @@ class LoginController extends Controller
             'user' => $user,
         ]);
     }
-
+   
     // Logout method to invalidate the user's token
     public function logout(Request $request)
     {
