@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
 import 'package:ts_autoparts_app/services/product_service.dart'; // Import the ProductService
-import 'package:ts_autoparts_app/screens/product_description.dart'; // Import the ProductDescriptionPage
+import 'package:ts_autoparts_app/screens/customer/product_description.dart'; // Import the ProductDescriptionPage
 
 class ProductsScreen extends StatefulWidget {
   @override

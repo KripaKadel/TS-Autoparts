@@ -7,6 +7,7 @@ class User {
   final String? profileImage;
   final bool isEmailVerified;
   final DateTime? emailVerifiedAt;
+  final String role; // Added role field
 
   User({
     required this.id,
@@ -17,6 +18,7 @@ class User {
     this.profileImage,
     this.isEmailVerified = false,
     this.emailVerifiedAt,
+    this.role = 'customer', // Default to 'customer', can be 'mechanic' or others
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -31,6 +33,7 @@ class User {
       emailVerifiedAt: json['email_verified_at'] != null 
           ? DateTime.tryParse(json['email_verified_at']) 
           : null,
+      role: json['role'] ?? 'customer', // Extract role from JSON, default to 'customer'
     );
   }
 
@@ -44,6 +47,7 @@ class User {
     'is_email_verified': isEmailVerified,
     if (emailVerifiedAt != null) 
       'email_verified_at': emailVerifiedAt!.toIso8601String(),
+    'role': role, // Include role in the JSON representation
   };
 
   bool get isVerified => isEmailVerified;
@@ -57,6 +61,7 @@ class User {
     String? profileImage,
     bool? isEmailVerified,
     DateTime? emailVerifiedAt,
+    String? role, // Added role in copyWith for easier modification
   }) {
     return User(
       id: id ?? this.id,
@@ -67,6 +72,7 @@ class User {
       profileImage: profileImage ?? this.profileImage,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       emailVerifiedAt: emailVerifiedAt ?? this.emailVerifiedAt,
+      role: role ?? this.role, // Ensure role is copied
     );
   }
 }

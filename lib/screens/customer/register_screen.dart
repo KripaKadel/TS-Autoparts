@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
-import 'package:ts_autoparts_app/screens/home_screen.dart';
-import 'package:ts_autoparts_app/screens/login_screen.dart';
-import 'package:ts_autoparts_app/screens/otp_verification_screen.dart';
+import 'package:ts_autoparts_app/screens/customer/home_screen.dart';
+import 'package:ts_autoparts_app/screens/customer/login_screen.dart';
+import 'package:ts_autoparts_app/screens/customer/otp_verification_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

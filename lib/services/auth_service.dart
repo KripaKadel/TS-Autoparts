@@ -40,7 +40,6 @@ class AuthService {
     }
   }
 
-
   // ==================== GOOGLE AUTH METHODS ====================
 
   Future<User?> loginWithGoogle() async {
@@ -198,27 +197,38 @@ class AuthService {
 
    // Login a user
   Future<User?> loginUser(String email, String password) async {
-  final response = await http.post(
-    Uri.parse('$baseUrl/api/login'),
-    headers: {'Content-Type': 'application/json'},
-    body: json.encode({'email': email, 'password': password}),
-  );
+  try {
+    final client = await _httpClient;
+    final response = await client.post(
+      Uri.parse('$baseUrl/api/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
 
-  if (response.statusCode == 200) {
-    final responseBody = json.decode(response.body);
+    if (response.statusCode == 200) {
+      final responseBody = json.decode(response.body);
 
-    final userJson = responseBody['user'];
-    final token = responseBody['access_token'];
+      final userJson = responseBody['user'];
+      final token = responseBody['access_token'];
+      final role = userJson['role'] ?? 'customer'; // default to 'customer'
 
-    // Inject token into the user JSON so User.fromJson works properly
-    final user = User.fromJson({
-      ...userJson,
-      'access_token': token,
-    });
+      // Inject token into the user JSON so User.fromJson works properly
+      final user = User.fromJson({
+        ...userJson,
+        'access_token': token,
+      });
 
-    return user;
-  } else {
-    print('Login failed: ${response.body}');
+      // Store token, user, and role in secure storage
+      await _saveUserData(user, token);
+      await _storage.write(key: 'role', value: role);
+
+      return user;
+    } else {
+      debugPrint('Login failed: ${response.body}');
+      return null;
+    }
+  } catch (e) {
+    debugPrint('Login exception: $e');
     return null;
   }
 }
@@ -376,8 +386,8 @@ class AuthService {
   }
 
   Future<void> rememberCredentials(String email, String password) async {
-  await _storage.write(key: 'remembered_email', value: email);
-  await _storage.write(key: 'remembered_password', value: password);
+    await _storage.write(key: 'remembered_email', value: email);
+    await _storage.write(key: 'remembered_password', value: password);
 }
 
 Future<void> clearRememberedCredentials() async {
@@ -448,6 +458,40 @@ Future<Map<String, dynamic>?> updateUserProfile({
     return null;
   }
 }
+Future<bool> changePassword({
+  required String oldPassword,
+  required String newPassword,
+  required String confirmPassword,
+}) async {
+  try {
+    final token = await _storage.read(key: 'access_token');
+    if (token == null) throw Exception('No token found.');
 
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/user/change-password'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'old_password': oldPassword,
+        'new_password': newPassword,
+        'new_password_confirmation': confirmPassword,
+      }),
+    );
+
+    debugPrint('Change Password Response: ${response.statusCode} - ${response.body}');
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      final responseBody = jsonDecode(response.body);
+      throw Exception(responseBody['message'] ?? 'Password update failed');
+    }
+  } catch (e) {
+    debugPrint('Change password error: $e');
+    return false;
+  }
+}
 
 }

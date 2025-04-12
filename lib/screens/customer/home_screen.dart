@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/main.dart';
 import 'package:ts_autoparts_app/services/product_service.dart'; // Import the ProductService
 import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
-import 'package:ts_autoparts_app/screens/services_screen.dart'; // Assuming ServiceScreen is in service_screen.dart
+import 'package:ts_autoparts_app/screens/customer/services_screen.dart'; // Assuming ServiceScreen is in service_screen.dart
 
 void main() {
   runApp(MyApp());

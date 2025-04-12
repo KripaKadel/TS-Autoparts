@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:ts_autoparts_app/screens/home_screen.dart'; // Import Home page
-import 'package:ts_autoparts_app/screens/login_screen.dart'; // Import Login page
-import 'package:ts_autoparts_app/screens/profile_screen.dart'; // Import Profile page
-import 'package:ts_autoparts_app/screens/register_screen.dart'; // Import Register page
-import 'package:ts_autoparts_app/screens/products_screen.dart'; // Import Products page
-import 'package:ts_autoparts_app/screens/services_screen.dart'; // Import Services page
-import 'package:ts_autoparts_app/screens/cart_screen.dart'; // Import Cart page
+import 'package:ts_autoparts_app/screens/customer/home_screen.dart'; // Import Home page
+import 'package:ts_autoparts_app/screens/customer/login_screen.dart'; // Import Login page
+import 'package:ts_autoparts_app/screens/customer/profile_screen.dart'; // Import Profile page
+import 'package:ts_autoparts_app/screens/customer/register_screen.dart'; // Import Register page
+import 'package:ts_autoparts_app/screens/customer/products_screen.dart'; // Import Products page
+import 'package:ts_autoparts_app/screens/customer/services_screen.dart'; // Import Services page
+import 'package:ts_autoparts_app/screens/customer/cart_screen.dart'; // Import Cart page
 import 'package:ts_autoparts_app/components/navbar.dart'; // Import the custom bottom navbar
-
+import 'package:ts_autoparts_app/screens/mechanic/mechanic_home.dart';
 void main() {
   runApp(MyApp());
 }
@@ -41,6 +41,7 @@ class MyApp extends StatelessWidget {
         '/products': (context) => ProductsWrapper(), // Products Wrapper
         '/services': (context) => ServicesWrapper(), // Services Wrapper
         '/cart': (context) => CartWrapper(), // Cart Wrapper
+        '/mechanic': (context) => MechanicHomeScreen(), // Mechanic Home Wrapper
       },
       initialRoute: '/login', // Set the initial route to the LoginScreen
     );

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart'; 
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
-import 'package:ts_autoparts_app/screens/register_screen.dart'; // Import Register screen
+import 'package:ts_autoparts_app/screens/customer/register_screen.dart'; // Import Register screen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,39 +23,43 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Handle login
   Future<void> _login() async {
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
-
-  final user = await _authService.loginUser(
-    _emailController.text.trim(),
-    _passwordController.text.trim(),
-  );
-
-  if (user != null) {
-    print("User info from loginUser():");
-    print("Name: ${user.name}");
-    print("Email: ${user.email}");
-
-    // Save all required user details securely
-    await SecureStorage.saveToken(user.accessToken);
-    await SecureStorage.saveUsername(user.name); // <-- Save the name
-    await SecureStorage.saveEmail(user.email);   // <-- Save the email
-    
-    // if (user.profileImage != null) {
-    //   await SecureStorage.saveProfileImage(user.profileImage!);
-    // }
-
-    Navigator.pushReplacementNamed(context, '/home');
-  } else {
     setState(() {
-      _isLoading = false;
-      _errorMessage = 'Invalid email or password';
+      _isLoading = true;
+      _errorMessage = null;
     });
-  }
-}
 
+    final user = await _authService.loginUser(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+
+    if (user != null) {
+      print("User info from loginUser():");
+      print("Name: ${user.name}");
+      print("Email: ${user.email}");
+
+      // Save all required user details securely
+      await SecureStorage.saveToken(user.accessToken);
+      await SecureStorage.saveUsername(user.name); // <-- Save the name
+      await SecureStorage.saveEmail(user.email);   // <-- Save the email
+      await SecureStorage.saveRole(user.role);     // <-- Save the role
+
+      // Navigate based on the role
+      final role = await SecureStorage.getRole();
+      if (role == 'customer') {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else if (role == 'mechanic') {
+        Navigator.pushReplacementNamed(context, '/mechanic');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home'); // Default fallback
+      }
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Invalid email or password';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
