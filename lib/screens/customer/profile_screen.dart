@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ts_autoparts_app/screens/customer/editprofile_screen.dart';
 import 'package:ts_autoparts_app/screens/customer/change_password.dart'; // Import the ChangePasswordScreen
 import 'package:ts_autoparts_app/screens/customer/my_appointments.dart'; // Import MyAppointmentsScreen
+import 'package:ts_autoparts_app/screens/customer/my_orders.dart';
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -216,7 +217,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 MaterialPageRoute(builder: (context) => const MyAppointmentsScreen()),
               );
             } 
-            // You can add more cases like 'My Orders', etc. here as needed
+            else if (title == 'My Orders') {
+  await Navigator.push(
+    context!,
+    MaterialPageRoute(builder: (context) => const MyOrdersScreen()),
+  );
+}
           }
         },
       ),
