@@ -44,9 +44,16 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> appointments = json.decode(response.body);
+        final List<dynamic> allAppointments = json.decode(response.body);
+
+        // Filter out cancelled appointments
+        final List<dynamic> activeAppointments = allAppointments.where((appointment) {
+          final status = (appointment['status'] ?? '').toString().toLowerCase();
+          return status != 'cancelled' && status != 'canceled';
+        }).toList();
+
         setState(() {
-          _appointments = appointments;
+          _appointments = activeAppointments;
           _isLoading = false;
         });
       } else {
@@ -64,55 +71,53 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
   }
 
   Future<void> _cancelAppointment(int id) async {
-  final token = await SecureStorage.getToken();
-  if (token == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('User not logged in.')),
-    );
-    return;
-  }
-
-  final url = Uri.parse('$baseUrl/api/appointments/$id/cancel');
-
-  try {
-    final response = await http.patch(
-      url,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      setState(() {
-        _appointments.removeWhere((appointment) => appointment['id'] == id);
-      });
-
+    final token = await SecureStorage.getToken();
+    if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Appointment cancelled.')),
+        const SnackBar(content: Text('User not logged in.')),
       );
-    } else {
-      final responseBody = json.decode(response.body);
-      String errorMessage = responseBody['message'] ?? 'Failed to cancel appointment';
+      return;
+    }
 
-      if (responseBody['error_code'] == 'appointment_not_found') {
-        errorMessage = 'Appointment not found.';
-      } else if (responseBody['error_code'] == 'unauthorized') {
-        errorMessage = 'You are not authorized to cancel this appointment.';
+    final url = Uri.parse('$baseUrl/api/appointments/$id/cancel');
+
+    try {
+      final response = await http.patch(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // Refresh list after cancellation
+        await _fetchAppointments();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment cancelled.')),
+        );
+      } else {
+        final responseBody = json.decode(response.body);
+        String errorMessage = responseBody['message'] ?? 'Failed to cancel appointment';
+
+        if (responseBody['error_code'] == 'appointment_not_found') {
+          errorMessage = 'Appointment not found.';
+        } else if (responseBody['error_code'] == 'unauthorized') {
+          errorMessage = 'You are not authorized to cancel this appointment.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
       }
-
+    } catch (e) {
+      debugPrint('Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
+        SnackBar(content: Text('Error: $e')),
       );
     }
-  } catch (e) {
-    debugPrint('Error: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e')),
-    );
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +155,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                               'Mechanic: $mechanicName',
                             ),
                             isThreeLine: true,
-                            trailing: status == 'Cancelled'
+                            trailing: status.toString().toLowerCase() == 'cancelled'
                                 ? const Text('Cancelled', style: TextStyle(color: Colors.red))
                                 : TextButton(
                                     onPressed: () => _cancelAppointment(appointment['id']),

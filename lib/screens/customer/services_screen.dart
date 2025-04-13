@@ -231,7 +231,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           '${selectedTime.minute.toString().padLeft(2, '0')}';
 
       final response = await http.post(
-        Uri.parse('$baseUrl/appointments'),
+        Uri.parse('$baseUrl/api/appointments'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

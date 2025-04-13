@@ -62,32 +62,47 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 SizedBox(height: 16),
 
                 // Search bar
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 8),
-                      Icon(Icons.search, color: Colors.grey),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: 'Search Car Parts or Garage Service',
-                            border: InputBorder.none,
-                            hintStyle: TextStyle(color: Colors.grey[500]),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.filter_list, color: Colors.grey),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
+               Row(
+  children: [
+    // Search Box (Expanded to take remaining space)
+    Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            SizedBox(width: 8),
+            Icon(Icons.search, color: Colors.grey),
+            SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search Car Parts or Garage Service',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.grey[500]),
                 ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.filter_list, color: Colors.grey),
+              onPressed: () {},
+            ),
+          ],
+        ),
+      ),
+    ),
+    // Notification Icon (Outside search box)
+    SizedBox(width: 8), // Add spacing between search box and icon
+      IconButton(
+      iconSize: 30, // Increased from default 24
+      icon: Icon(Icons.notifications_none, color: Colors.grey),
+      onPressed: () {},
+    ),
+  ],
+),
+
                 SizedBox(height: 16),
 
                 // Product List

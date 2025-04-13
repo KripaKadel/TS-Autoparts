@@ -23,54 +23,51 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _fetchOrders() async {
-  final token = await SecureStorage.getToken();
-  if (token == null) {
-    setState(() {
-      _errorMessage = 'User not logged in.';
-      _isLoading = false;
-    });
-    return;
-  }
-
-  final url = Uri.parse('$baseUrl/api/orders');
-
-  try {
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> allOrders = data['orders'] ?? [];
-
-      // Filter out cancelled orders
-      final List<dynamic> activeOrders = allOrders.where((order) {
-        final status = (order['status'] ?? '').toString().toLowerCase();
-        return status != 'cancelled' && status != 'canceled';
-      }).toList();
-
+    final token = await SecureStorage.getToken();
+    if (token == null) {
       setState(() {
-        _orders = activeOrders;
+        _errorMessage = 'User not logged in.';
         _isLoading = false;
       });
-    } else {
+      return;
+    }
+
+    final url = Uri.parse('$baseUrl/api/orders');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> allOrders = json.decode(response.body);
+
+        final List<dynamic> activeOrders = allOrders.where((order) {
+          final status = (order['status'] ?? '').toString().toLowerCase();
+          return status != 'cancelled' && status != 'canceled';
+        }).toList();
+
+        setState(() {
+          _orders = activeOrders;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to load orders. (${response.statusCode})';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to load orders. (${response.statusCode})';
+        _errorMessage = 'An error occurred: $e';
         _isLoading = false;
       });
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = 'An error occurred: $e';
-      _isLoading = false;
-    });
   }
-}
-
 
   Future<void> _cancelOrder(int orderId) async {
     final token = await SecureStorage.getToken();
@@ -107,6 +104,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
+  String capitalizeStatus(String status) {
+    if (status.isEmpty) return 'Unknown';
+    return '${status[0].toUpperCase()}${status.substring(1)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = const Color(0xFF144FAB);
@@ -126,34 +128,35 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       padding: const EdgeInsets.all(16),
                       itemCount: _orders.length,
                       itemBuilder: (context, index) {
-                        final order = _orders[index];
-                        final status = (order['status'] ?? 'unknown').toString();
-                        final totalRaw = order['total_amount'];
-                        final total = double.tryParse(totalRaw.toString())?.toStringAsFixed(2) ?? '0.00';
-                        final date = order['order_date'] ?? 'N/A';
+  final order = _orders[index];
+  final status = (order['status'] ?? 'unknown').toString().toLowerCase();
+  final total = double.tryParse(order['total_amount'].toString())?.toStringAsFixed(2) ?? '0.00';
+  final date = order['order_date'] ?? 'N/A';
 
-                        return Card(
-                          elevation: 3,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          child: ListTile(
-                            leading: const Icon(Icons.shopping_cart, color: Color(0xFF144FAB)),
-                            title: Text('Order #${order['id']}'),
-                            subtitle: Text(
-                              'Date: $date\n'
-                              'Status: ${status[0].toUpperCase()}${status.substring(1)}\n'
-                              'Total: \$$total',
-                            ),
-                            isThreeLine: true,
-                            trailing: status == 'canceled' || status == 'cancelled'
-                                ? const Text('Canceled', style: TextStyle(color: Colors.red))
-                                : TextButton(
-                                    onPressed: () => _cancelOrder(order['id']),
-                                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
-                                  ),
-                          ),
-                        );
-                      },
+  return Card(
+    elevation: 3,
+    margin: const EdgeInsets.only(bottom: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    child: ListTile(
+      leading: const Icon(Icons.shopping_cart, color: Color(0xFF144FAB)),
+      title: Text('Order #${order['id']}'),
+      subtitle: Text(
+        'Date: $date\n'
+        'Status: ${capitalizeStatus(status)}\n'
+        'Total: \$$total',
+      ),
+      isThreeLine: true,
+      trailing: (status == 'canceled' || status == 'cancelled')
+          ? const Text('Canceled', style: TextStyle(color: Colors.red))
+          : TextButton(
+              onPressed: () => _cancelOrder(order['id']),
+              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+            ),
+    ),
+  );
+},
+
+                      
                     ),
     );
   }
