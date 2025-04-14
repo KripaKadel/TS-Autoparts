@@ -114,7 +114,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Verify Email')),
+      appBar: AppBar(
+        title: const Text('Verify Email'),
+        foregroundColor: Colors.white,
+      ),
+      
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -172,14 +176,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _verifyOtp,
-                child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Verify'),
-              ),
+    onPressed: _isLoading ? null : _verifyOtp,
+    style: ElevatedButton.styleFrom(
+      // Keep default background color (remove if overriding)
+      foregroundColor: Colors.white, // Makes text AND loader white
+    ),
+    child: _isLoading
+        ? const CircularProgressIndicator(
+            color: Colors.white, // Ensures loader is white
+          )
+        : const Text(
+            'Verify',
+            style: TextStyle(
+              color: Colors.white, // Explicit white text (redundant but clear)
+              fontWeight: FontWeight.bold,
             ),
-            
-            const SizedBox(height: 20),
+          ),
+  ),
+),
+            const SizedBox(height: 12),
             
             // Resend OTP
             Center(
