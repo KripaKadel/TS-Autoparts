@@ -5,20 +5,24 @@ class SecureStorage {
   // Instance of FlutterSecureStorage
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
+  static const String _tokenKey = 'auth_token';
+  static const String _profileImageKey = 'profile_image';
+  static const String _userIdKey = 'user_id';
+
   // ==================== TOKEN ====================
   static Future<void> saveToken(String token) async {
-    await _storage.write(key: 'access_token', value: token);
+    await _storage.write(key: _tokenKey, value: token);
     debugPrint('[SecureStorage] Token saved: $token');
   }
 
   static Future<String?> getToken() async {
-    final token = await _storage.read(key: 'access_token');
+    final token = await _storage.read(key: _tokenKey);
     debugPrint('[SecureStorage] Token retrieved: $token');
     return token;
   }
 
   static Future<void> deleteToken() async {
-    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: _tokenKey);
     debugPrint('[SecureStorage] Token deleted');
   }
 
@@ -60,14 +64,19 @@ class SecureStorage {
 
   // ==================== PROFILE IMAGE ====================
   static Future<void> saveProfileImage(String imageUrl) async {
-    await _storage.write(key: 'profile_image', value: imageUrl);
+    await _storage.write(key: _profileImageKey, value: imageUrl);
     debugPrint('[SecureStorage] Profile image saved: $imageUrl');
   }
 
   static Future<String?> getProfileImage() async {
-    final imageUrl = await _storage.read(key: 'profile_image');
+    final imageUrl = await _storage.read(key: _profileImageKey);
     debugPrint('[SecureStorage] Profile image URL retrieved: $imageUrl');
     return imageUrl;
+  }
+
+  static Future<void> deleteProfileImage() async {
+    await _storage.delete(key: _profileImageKey);
+    debugPrint('[SecureStorage] Profile image deleted');
   }
 
   // ==================== ROLE ====================
@@ -87,7 +96,7 @@ class SecureStorage {
     await _storage.delete(key: 'username');
     await _storage.delete(key: 'email');
     await _storage.delete(key: 'phone_number');
-    await _storage.delete(key: 'profile_image');
+    await _storage.delete(key: _profileImageKey);
     await _storage.delete(key: 'role');
     debugPrint('[SecureStorage] User info deleted');
   }
@@ -96,5 +105,18 @@ class SecureStorage {
   static Future<void> clearAll() async {
     await _storage.deleteAll();
     debugPrint('[SecureStorage] All data cleared');
+  }
+
+  static Future<int?> getUserId() async {
+    final userIdStr = await _storage.read(key: _userIdKey);
+    return userIdStr != null ? int.parse(userIdStr) : null;
+  }
+
+  static Future<void> setUserId(int userId) async {
+    await _storage.write(key: _userIdKey, value: userId.toString());
+  }
+
+  static Future<void> deleteUserId() async {
+    await _storage.delete(key: _userIdKey);
   }
 }

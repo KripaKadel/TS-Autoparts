@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:ts_autoparts_app/models/product.dart'; // Import the Product model
+import 'package:ts_autoparts_app/models/product.dart';
+import 'package:ts_autoparts_app/models/review.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:ts_autoparts_app/utils/secure_storage.dart'; // Import the SecureStorage class
+import 'package:ts_autoparts_app/utils/secure_storage.dart';
+import 'package:ts_autoparts_app/constant/const.dart';
 
 class ProductDescriptionPage extends StatefulWidget {
   final Product product;
@@ -14,16 +16,57 @@ class ProductDescriptionPage extends StatefulWidget {
 
 class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
   int quantity = 1;
-  double rating = 3.4;
-  double userRating = 0;
+  List<Review> _reviews = [];
+  bool _isLoadingReviews = true;
+  String? _reviewError;
+  double _averageUserRating = 0;
 
-  // Method to add product to cart
+  @override
+  void initState() {
+    super.initState();
+    _fetchReviews();
+  }
+
+  Future<void> _fetchReviews() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/products/${widget.product.id}/reviews'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> reviewsJson = json.decode(response.body);
+        final List<Review> loadedReviews =
+            reviewsJson.map((json) => Review.fromJson(json)).toList();
+
+        // Calculate average rating from user reviews
+        double totalRating = loadedReviews.fold(0, (sum, r) => sum + r.rating);
+        double averageRating = loadedReviews.isNotEmpty
+            ? totalRating / loadedReviews.length
+            : 0;
+
+        setState(() {
+          _reviews = loadedReviews;
+          _averageUserRating = averageRating;
+          _isLoadingReviews = false;
+        });
+      } else {
+        setState(() {
+          _reviewError = 'Failed to load reviews';
+          _isLoadingReviews = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _reviewError = 'Error loading reviews: $e';
+        _isLoadingReviews = false;
+      });
+    }
+  }
+
   Future<void> addToCart(Product product, int quantity) async {
-    // Retrieve the token from secure storage
     String? token = await SecureStorage.getToken();
 
     if (token == null) {
-      // If token is null, show error
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Authentication failed. Please login first.'),
         backgroundColor: Colors.red,
@@ -31,16 +74,13 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
       return;
     }
 
-    final url = Uri.parse('http://10.0.2.2:8000/api/cart/add');
-    
-    // Debug log for the request
-    print("Adding product to cart: product_id=${product.id}, quantity=$quantity");
+    final url = Uri.parse('$baseUrl/api/cart/add');
 
     final response = await http.post(
       url,
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token', // Add token to Authorization header
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode(<String, dynamic>{
         'product_id': product.id,
@@ -48,34 +88,56 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
       }),
     );
 
-    // Handle the response
     if (response.statusCode == 200) {
-      // Success message
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Added to Cart Successfully!'),
         backgroundColor: Colors.green,
       ));
-      print("Product added to cart successfully!");
     } else {
-      // Failure message
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Failed to add product to cart!'),
         backgroundColor: Colors.red,
       ));
-      print("Failed to add product to cart. Error: ${response.statusCode}");
     }
   }
 
-  // Method to handle star rating
-  void _onRatingUpdate(double value) {
-    setState(() {
-      userRating = value;
-    });
-    // Here you would typically send this rating to your backend
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('You rated this product ${value.toInt()} stars!'),
-      backgroundColor: Colors.green,
-    ));
+  Widget _buildReviewItem(Review review) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.person, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  review.userName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
+                    Text(review.rating.toStringAsFixed(1)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(review.comment ?? 'No comment provided'),
+            const SizedBox(height: 8),
+            Text(
+              'Reviewed on ${review.createdAt.toString().split(' ')[0]}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -89,7 +151,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
           icon: Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        // Add rating to app bar on the same line as back arrow
         actions: [
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -98,11 +159,16 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                 Icon(Icons.star, color: Colors.amber, size: 18),
                 SizedBox(width: 4),
                 Text(
-                  '$rating',
+                  _averageUserRating.toStringAsFixed(1),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  '(${_reviews.length})',
+                  style: TextStyle(color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -112,7 +178,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Product Image on Light Grey Background
             Container(
               width: double.infinity,
               height: 250,
@@ -129,8 +194,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     : Icon(Icons.image, size: 50, color: Colors.grey[700]),
               ),
             ),
-            
-            // White Container for Product Details
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(16.0),
@@ -144,40 +207,15 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product Name and Interactive Star Rating
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.product.name,
-                          style: TextStyle(
-                            fontSize: 20, 
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      // Interactive five stars rating
-                      Row(
-                        children: List.generate(5, (index) {
-                          return GestureDetector(
-                            onTap: () => _onRatingUpdate(index + 1.0),
-                            child: Icon(
-                              index < userRating
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              color: Colors.amber,
-                              size: 24,
-                            ),
-                          );
-                        }),
-                      ),
-                    ],
+                  Text(
+                    widget.product.name,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
                   SizedBox(height: 12),
-                  // Price
                   Text(
                     'Rs. ${widget.product.price.toStringAsFixed(0)}',
                     style: TextStyle(
@@ -187,7 +225,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ),
                   ),
                   SizedBox(height: 8),
-                  // Brand
                   Text(
                     'Brand: ${widget.product.brand}',
                     style: TextStyle(
@@ -196,7 +233,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ),
                   ),
                   SizedBox(height: 12),
-                  // Product Description
                   Text(
                     widget.product.description ?? 'Product description unavailable.',
                     style: TextStyle(
@@ -205,7 +241,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ),
                   ),
                   SizedBox(height: 24),
-                  // Quantity Selector
                   Row(
                     children: [
                       Text(
@@ -223,7 +258,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                         ),
                         child: Row(
                           children: [
-                            // Minus Button
                             InkWell(
                               onTap: () {
                                 if (quantity > 1) {
@@ -237,7 +271,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                                 child: Icon(Icons.remove, color: Colors.red, size: 18),
                               ),
                             ),
-                            // Quantity Display
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               child: Text(
@@ -248,7 +281,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                                 ),
                               ),
                             ),
-                            // Plus Button
                             InkWell(
                               onTap: () {
                                 setState(() {
@@ -266,7 +298,6 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                     ],
                   ),
                   SizedBox(height: 24),
-                  // Add to Cart Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -290,6 +321,32 @@ class _ProductDescriptionPageState extends State<ProductDescriptionPage> {
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Reviews',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_isLoadingReviews)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_reviewError != null)
+                    Center(child: Text(_reviewError!))
+                  else if (_reviews.isEmpty)
+                    const Center(child: Text('No reviews yet'))
+                  else
+                    ..._reviews.map(_buildReviewItem),
                 ],
               ),
             ),
