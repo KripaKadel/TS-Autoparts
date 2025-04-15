@@ -5,7 +5,7 @@
 @section('content')
     <div class="bg-gradient-to-r from-purple-50 to-blue-50 min-h-screen py-6">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Header with gradient background -->
+            <!-- Header -->
             <div class="bg-gradient-to-r from-blue-800 to-blue-600 rounded-xl shadow-lg mb-6 p-6 text-white">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <h2 class="text-2xl font-bold">Manage Orders</h2>
@@ -53,12 +53,12 @@
                         </form>
                     </div>
                 </div>
-                
+
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
@@ -71,7 +71,7 @@
                             @foreach($orders as $order)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="font-medium text-blue-600">#{{ $order->id }}</div>
+                                        <div class="text-gray-900">{{ $loop->iteration }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
@@ -96,7 +96,7 @@
                                         <div class="text-gray-900">{{ $order->orderItems->sum('quantity') }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="font-medium text-gray-900">${{ number_format($order->total_amount, 2) }}</div>
+                                        <div class="font-medium text-gray-900">Rs.{{ number_format($order->total_amount, 2) }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($order->status == 'completed')
@@ -107,7 +107,15 @@
                                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                                                 Processing
                                             </span>
-                                        @elseif($order->status == 'cancelled')
+                                        @elseif($order->status == 'shipped')
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                                Shipped
+                                            </span>
+                                        @elseif($order->status == 'delivered')
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-teal-100 text-teal-800">
+                                                Delivered
+                                            </span>
+                                        @elseif($order->status == 'canceled')
                                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                                 Cancelled
                                             </span>
@@ -137,7 +145,7 @@
                         </tbody>
                     </table>
                 </div>
-                
+
                 <!-- Pagination -->
                 <div class="bg-gray-50 px-6 py-4 border-t">
                     {{ $orders->appends(request()->query())->links() }}

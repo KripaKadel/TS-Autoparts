@@ -182,6 +182,24 @@ class OrderController extends Controller
         }
     }
 
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,processing,shipped,delivered,canceled',
+        ]);
+    
+        $order = Order::findOrFail($id);
+        $order->status = $request->status;
+        $order->save();
+    
+        // Optional: notify user/admins here
+    
+       
+        return redirect()
+        ->route('admin.orders.index')
+        ->with('success', 'Order status updated successfully.');
+    }
+
     /**
      * Admin - View paginated list of all orders
      */

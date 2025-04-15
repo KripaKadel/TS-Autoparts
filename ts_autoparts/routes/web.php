@@ -44,7 +44,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::prefix('orders')->name('orders.')->controller(OrderController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/{order}', 'show')->name('show');
-        Route::patch('/{order}/status', 'updateStatus')->name('update-status');
+        Route::patch('/{id}/status', 'updateStatus')->name('updateStatus'); 
     });
 
     // Category Management
