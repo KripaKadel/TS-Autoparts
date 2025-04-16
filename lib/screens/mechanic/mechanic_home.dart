@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/models/user.dart';
+import 'package:ts_autoparts_app/screens/mechanic/mechanic_appointments_screen.dart';
+//import 'package:ts_autoparts_app/screens/mechanic/mechanic_appointments.dart';
 
 class MechanicHomeScreen extends StatefulWidget {
   @override
@@ -97,17 +99,27 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
     );
   }
 
+  // Navigate to appointments
+  void _goToAppointments() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MechanicAppointmentsScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Mechanic Dashboard'),
+        backgroundColor: const Color(0xFF144FAB),
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: Icon(Icons.exit_to_app),
             onPressed: () async {
               await AuthService().logoutUser();
-              Navigator.pushReplacementNamed(context, '/login'); // Redirect to login screen
+              Navigator.pushReplacementNamed(context, '/login');
             },
           )
         ],
@@ -127,34 +139,52 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
                     ),
                   ),
                   SizedBox(height: 16),
-                  // View Jobs Button
+                  // View Appointments Button
                   ElevatedButton(
-                    onPressed: _goToJobList,
-                    child: Text('View Jobs'),
+                    onPressed: _goToAppointments,
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF144FAB),
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.0),
                       textStyle: TextStyle(fontSize: 18),
                     ),
+                    child: Text('View Appointments'),
+                  ),
+                  SizedBox(height: 16),
+                  // View Jobs Button
+                  ElevatedButton(
+                    onPressed: _goToJobList,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF144FAB),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      textStyle: TextStyle(fontSize: 18),
+                    ),
+                    child: Text('View Jobs'),
                   ),
                   SizedBox(height: 16),
                   // View Customer Requests Button
                   ElevatedButton(
                     onPressed: _goToCustomerRequests,
-                    child: Text('View Customer Requests'),
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF144FAB),
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.0),
                       textStyle: TextStyle(fontSize: 18),
                     ),
+                    child: Text('View Customer Requests'),
                   ),
                   SizedBox(height: 16),
                   // Update Profile Button
                   ElevatedButton(
                     onPressed: _goToUpdateProfile,
-                    child: Text('Update Profile'),
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF144FAB),
+                      foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.0),
                       textStyle: TextStyle(fontSize: 18),
                     ),
+                    child: Text('Update Profile'),
                   ),
                   SizedBox(height: 16),
                 ],

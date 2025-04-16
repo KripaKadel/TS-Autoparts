@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
 import 'package:ts_autoparts_app/constant/const.dart';
+import 'package:ts_autoparts_app/screens/customer/rate_mechanic_screen.dart';
 
 class MyAppointmentsScreen extends StatefulWidget {
   const MyAppointmentsScreen({Key? key}) : super(key: key);
@@ -52,6 +53,28 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
           return status != 'cancelled' && status != 'canceled';
         }).toList();
 
+        // Check review status for completed appointments
+        for (var appointment in activeAppointments) {
+          if (appointment['status'].toString().toLowerCase() == 'completed') {
+            try {
+              final reviewResponse = await http.get(
+                Uri.parse('$baseUrl/api/reviews/check/${appointment['mechanic_id']}'),
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                },
+              );
+
+              if (reviewResponse.statusCode == 200) {
+                final reviewData = json.decode(reviewResponse.body);
+                appointment['has_review'] = reviewData['has_reviewed'];
+              }
+            } catch (e) {
+              debugPrint('Error checking review status: $e');
+            }
+          }
+        }
+
         setState(() {
           _appointments = activeAppointments;
           _isLoading = false;
@@ -91,9 +114,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       );
 
       if (response.statusCode == 200) {
-        // Refresh list after cancellation
         await _fetchAppointments();
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Appointment cancelled.')),
         );
@@ -116,6 +137,23 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
+    }
+  }
+
+  Future<void> _navigateToRateReview(dynamic appointment) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RateMechanicScreen(
+          appointment: appointment,
+          mechanicName: appointment['mechanic']?['name'] ?? 'Mechanic',
+        ),
+      ),
+    );
+
+    if (result == true) {
+      // Refresh appointments to update review status
+      _fetchAppointments();
     }
   }
 
@@ -142,26 +180,79 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                         final appointment = _appointments[index];
                         final mechanicName = appointment['mechanic']?['name'] ?? 'N/A';
                         final status = appointment['status'] ?? 'N/A';
+                        final hasReview = appointment['has_review'] ?? false;
 
                         return Card(
                           elevation: 3,
                           margin: const EdgeInsets.only(bottom: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          child: ListTile(
-                            leading: const Icon(Icons.calendar_today, color: Color(0xFF144FAB)),
-                            title: Text(appointment['service_description'] ?? 'Service'),
-                            subtitle: Text(
-                              '${appointment['appointment_date'] ?? 'N/A'}\n'
-                              'Status: $status\n'
-                              'Mechanic: $mechanicName',
-                            ),
-                            isThreeLine: true,
-                            trailing: status.toString().toLowerCase() == 'cancelled'
-                                ? const Text('Cancelled', style: TextStyle(color: Colors.red))
-                                : TextButton(
-                                    onPressed: () => _cancelAppointment(appointment['id']),
-                                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
-                                  ),
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.calendar_today, color: Color(0xFF144FAB)),
+                                title: Text(appointment['service_description'] ?? 'Service'),
+                                subtitle: Text(
+                                  '${appointment['appointment_date'] ?? 'N/A'}\n'
+                                  'Status: $status\n'
+                                  'Mechanic: $mechanicName',
+                                ),
+                                isThreeLine: true,
+                                trailing: status.toString().toLowerCase() == 'cancelled'
+                                    ? const Text('Cancelled', style: TextStyle(color: Colors.red))
+                                    : TextButton(
+                                        onPressed: () => _cancelAppointment(appointment['id']),
+                                        child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                                      ),
+                              ),
+                              if (status.toString().toLowerCase() == 'completed') ...[
+                                const Divider(height: 1),
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: hasReview
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green[50],
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.green),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle,
+                                                color: Colors.green,
+                                                size: 16,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Reviewed',
+                                                style: TextStyle(
+                                                  color: Colors.green,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : TextButton.icon(
+                                          onPressed: () => _navigateToRateReview(appointment),
+                                          icon: const Icon(Icons.star_border, size: 18),
+                                          label: const Text('Rate & Review'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: primaryColor,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ],
+                            ],
                           ),
                         );
                       },
