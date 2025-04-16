@@ -6,139 +6,150 @@ use App\Models\Appointment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
-use App\Notifications\AppointmentNotification;
+use Illuminate\Support\Facades\Auth;
 
 class AppointmentController extends Controller
 {
     /**
-     * Get all mechanics
+     * Get appointments for the logged-in mechanic (for mobile app)
      */
-    public function getMechanics()
+    public function getMechanicAppointments(Request $request)
     {
-        $mechanics = User::where('role', 'mechanic')->get(['id', 'name']);
-        return response()->json($mechanics);
+        $mechanic = $request->user();
+
+        if ($mechanic->role !== 'mechanic') {
+            return response()->json([
+                'message' => 'Unauthorized. Only mechanics can access this endpoint.',
+            ], 403);
+        }
+
+        Log::info('Fetching appointments for mechanic', ['mechanic_id' => $mechanic->id]);
+
+        $appointments = Appointment::with(['user', 'mechanic', 'review'])
+            ->where('mechanic_id', $mechanic->id)
+            ->orderByDesc('appointment_date')
+            ->get()
+            ->map(function ($appointment) {
+                $appointment->has_review = $appointment->review !== null;
+                return $appointment;
+            });
+
+        return response()->json($appointments);
+    }
+
+    /**
+     * Get appointments for the logged-in user
+     */
+    public function getUserAppointments(Request $request)
+    {
+        $user = $request->user();
+        
+        $appointments = Appointment::with(['mechanic', 'review'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('appointment_date')
+            ->get()
+            ->map(function ($appointment) {
+                $appointment->has_review = $appointment->review !== null;
+                return $appointment;
+            });
+
+        return response()->json($appointments);
     }
 
     /**
      * Store a new appointment
      */
     public function store(Request $request)
-{
-    $validatedData = $request->validate([
-        'user_id' => 'required|exists:users,id',
-        'mechanic_id' => 'required|exists:users,id',
-        'service_description' => 'required|string',
-        'appointment_date' => 'required|date',
-        'time' => 'required|date_format:H:i',
-        'status' => 'required|string',
-    ]);
-
-    $appointmentDateTime = $validatedData['appointment_date'] . ' ' . $validatedData['time'];
-
-    $existingAppointment = Appointment::where('appointment_date', $appointmentDateTime)
-        ->where('mechanic_id', $validatedData['mechanic_id'])
-        ->first();
-
-    if ($existingAppointment) {
-        return response()->json([
-            'message' => 'The selected time slot is already taken. Please choose another time.',
-        ], 400);
-    }
-
-    $appointment = Appointment::create($validatedData);
-
-    // Notify the user
-    $user = User::find($validatedData['user_id']);
-    $user->notify(new AppointmentNotification($appointment, 'booked'));
-
-    // Notify the admin(s)
-    $admins = User::where('role', 'admin')->get();
-    foreach ($admins as $admin) {
-        $admin->notify(new AppointmentNotification($appointment, 'booked'));
-    }
-
-    return response()->json([
-        'message' => 'Appointment created successfully',
-        'data' => $appointment,
-    ], 201);
-}
-
-    /**
-     * Get appointments for the logged-in user (for mobile app)
-     */
-    public function getUserAppointments(Request $request)
     {
-        $user = $request->user();
+        $validated = $request->validate([
+            'mechanic_id' => 'required|exists:users,id',
+            'appointment_date' => 'required|date|after:now',
+            'service_type' => 'required|string',
+            'vehicle_info' => 'required|string',
+            'notes' => 'nullable|string',
+        ]);
 
-        Log::info('Fetching appointments for user', ['user_id' => $user->id]);
-
-        $appointments = Appointment::with(['mechanic'])
-            ->where('user_id', $user->id)
-            ->orderByDesc('appointment_date')
-            ->get();
-
-        return response()->json($appointments);
-    }
-
-    /**
-     * Cancel an appointment (only by the owner)
-     */
-    public function cancel($id)
-    {
-        $appointment = Appointment::find($id);
-    
-        if (!$appointment) {
-            return response()->json([
-                'message' => 'Appointment not found',
-                'error_code' => 'appointment_not_found',
-            ], 404);
-        }
-    
-        if ($appointment->user_id !== auth()->id()) {
-            return response()->json([
-                'message' => 'Unauthorized action',
-                'error_code' => 'unauthorized',
-            ], 403);
-        }
-    
-        $appointment->status = 'Canceled';
+        $appointment = new Appointment($validated);
+        $appointment->user_id = $request->user()->id;
+        $appointment->status = 'pending';
         $appointment->save();
-    
-        // Notify the user
-        $appointment->user->notify(new AppointmentNotification($appointment, 'canceled'));
-    
-        // Notify the admin(s)
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new AppointmentNotification($appointment, 'canceled'));
-        }
-    
+
         return response()->json([
-            'message' => 'Appointment cancelled successfully',
-            'appointment' => $appointment,
+            'message' => 'Appointment created successfully',
+            'appointment' => $appointment->load('mechanic', 'user')
+        ], 201);
+    }
+
+    /**
+     * Cancel an appointment
+     */
+    public function cancel($id, Request $request)
+    {
+        $appointment = Appointment::findOrFail($id);
+        
+        if ($appointment->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($appointment->status === 'completed') {
+            return response()->json(['message' => 'Cannot cancel completed appointment'], 400);
+        }
+
+        $appointment->status = 'cancelled';
+        $appointment->save();
+
+        return response()->json(['message' => 'Appointment cancelled successfully']);
+    }
+
+    /**
+     * Update appointment status (for mechanics)
+     */
+    public function updateStatus($id, Request $request)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:accepted,rejected,in_progress,completed'
+        ]);
+
+        $appointment = Appointment::findOrFail($id);
+        
+        if ($appointment->mechanic_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $appointment->status = $validated['status'];
+        $appointment->save();
+
+        return response()->json([
+            'message' => 'Appointment status updated successfully',
+            'appointment' => $appointment->load('user', 'mechanic')
         ]);
     }
-    
 
     /**
-     * Admin - View paginated list of all appointments
+     * Get review status for an appointment
      */
-    public function index()
+    public function getReviewStatus($id)
     {
-        $appointments = Appointment::with(['user', 'mechanic'])
-            ->latest()
-            ->paginate(10);
-
-        return view('admin.appointments.index', compact('appointments'));
+        $appointment = Appointment::with('review')->findOrFail($id);
+        return response()->json([
+            'has_review' => $appointment->review !== null
+        ]);
     }
 
     /**
-     * Admin - Show appointment details
+     * Get all mechanics
      */
-    public function show(Appointment $appointment)
+    public function getMechanics()
     {
-        $appointment->load(['user', 'mechanic']);
-        return view('admin.appointments.show', compact('appointment'));
+        $mechanics = User::where('role', 'mechanic')
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
+            ->get()
+            ->map(function ($mechanic) {
+                $mechanic->average_rating = round($mechanic->reviews_avg_rating ?? 0, 1);
+                return $mechanic;
+            });
+
+        return response()->json($mechanics);
     }
 }
