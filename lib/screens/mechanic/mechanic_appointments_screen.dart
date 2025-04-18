@@ -251,6 +251,25 @@ class _MechanicAppointmentsScreenState extends State<MechanicAppointmentsScreen>
                                     const SizedBox(height: 8),
                                     Text('Notes: $notes'),
                                   ],
+                                  if (status.toLowerCase() == 'confirmed') ...[
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        ElevatedButton(
+                                          onPressed: () => _updateAppointmentStatus(
+                                            appointment['id'],
+                                            'completed',
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          child: const Text('Mark as Completed'),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                   if (status.toLowerCase() == 'pending') ...[
                                     const SizedBox(height: 16),
                                     Row(

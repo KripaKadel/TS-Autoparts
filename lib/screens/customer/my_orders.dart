@@ -15,13 +15,44 @@ class MyOrdersScreen extends StatefulWidget {
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
   List<dynamic> _orders = [];
+  List<dynamic> _filteredOrders = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String? _selectedStatus;
+
+  final List<String> _statusFilters = [
+    'All',
+    'Pending',
+    'Processing',
+    'Delivered',
+    'Cancelled'
+  ];
 
   @override
   void initState() {
     super.initState();
     _fetchOrders();
+  }
+
+  void _filterOrders() {
+    if (_selectedStatus == null || _selectedStatus == 'All') {
+      _filteredOrders = _orders.map((order) {
+        if (order['status']?.toString().toLowerCase() == 'canceled') {
+          order['status'] = 'cancelled';
+        }
+        return order;
+      }).toList();
+    } else {
+      _filteredOrders = _orders.where((order) {
+        String orderStatus = order['status']?.toString().toLowerCase() ?? '';
+        if (orderStatus == 'canceled') {
+          orderStatus = 'cancelled';
+          order['status'] = 'cancelled';
+        }
+        return orderStatus == _selectedStatus!.toLowerCase();
+      }).toList();
+    }
+    setState(() {});
   }
 
   Future<void> _fetchOrders() async {
@@ -50,17 +81,16 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         print('=== DEBUG: Orders Response ===');
         print('Total orders: ${allOrders.length}');
 
-        final List<dynamic> activeOrders = allOrders.where((order) {
-          final status = (order['status'] ?? '').toString().toLowerCase();
-          return status != 'cancelled' && status != 'canceled';
-        }).toList();
+        setState(() {
+          _orders = allOrders;
+          _filterOrders();
+          _isLoading = false;
+        });
 
-        // Fetch reviews for all products in delivered orders
-        for (var order in activeOrders) {
+        // Fetch reviews for delivered orders
+        for (var order in allOrders) {
           if ((order['status'] ?? '').toString().toLowerCase() == 'delivered') {
             final orderItems = order['order_items'] as List<dynamic>? ?? [];
-            print('=== DEBUG: Order Items ===');
-            print(json.encode(orderItems));
             for (var item in orderItems) {
               try {
                 final productId = item['product_id'];
@@ -92,11 +122,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             }).toList();
           }
         }
-
-        setState(() {
-          _orders = activeOrders;
-          _isLoading = false;
-        });
+        _filterOrders();
       } else {
         setState(() {
           _errorMessage = 'Failed to load orders. (${response.statusCode})';
@@ -180,149 +206,514 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     return '${status[0].toUpperCase()}${status.substring(1)}';
   }
 
+  Future<void> _onRefresh() {
+    return _fetchOrders();
+  }
+
+  bool _isOrderFullyReviewed(dynamic order) {
+    if (order['products'] == null) return false;
+    final products = order['products'] as List<dynamic>;
+    return products.every((product) => product['has_review'] == true);
+  }
+
+  Color _getOrderBackgroundColor(dynamic order, String status) {
+    if (status.toLowerCase() == 'delivered' && _isOrderFullyReviewed(order)) {
+      return Colors.green.shade50;
+    }
+    return Colors.grey.shade50;
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = const Color(0xFF144FAB);
+    final Color secondaryTextColor = Colors.grey[600]!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Orders'),
+        title: const Text(
+          'My Orders',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
+        elevation: 2,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(child: Text(_errorMessage!))
-              : _orders.isEmpty
-                  ? const Center(child: Text('You have no orders.'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _orders.length,
-                      itemBuilder: (context, index) {
-                        final order = _orders[index];
-                        final status = (order['status'] ?? 'unknown').toString().toLowerCase();
-                        final total = double.tryParse(order['total_amount'].toString())?.toStringAsFixed(2) ?? '0.00';
-                        final date = order['order_date'] ?? 'N/A';
-                        final products = order['products'] as List<dynamic>? ?? [];
-
-                        return Card(
-                          elevation: 3,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 1,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.filter_list, color: primaryColor),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedStatus,
+                      hint: const Text('Filter by Status'),
+                      isExpanded: true,
+                      items: _statusFilters.map((String status) {
+                        return DropdownMenuItem<String>(
+                          value: status == 'All' ? null : status,
+                          child: Text(status),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedStatus = newValue;
+                          _filterOrders();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Order Header
-                              ListTile(
-                                leading: const Icon(Icons.shopping_cart, color: Color(0xFF144FAB)),
-                                title: Text('Order #${order['id']}'),
-                                subtitle: Text(
-                                  'Date: $date\n'
-                                  'Status: ${capitalizeStatus(status)}\n'
-                                  'Total: \$$total',
-                                ),
-                                isThreeLine: true,
-                                trailing: (status == 'canceled' || status == 'cancelled')
-                                    ? const Text('Canceled', style: TextStyle(color: Colors.red))
-                                    : TextButton(
-                                        onPressed: () => _cancelOrder(order['id']),
-                                        child: const Text('Cancel', style: TextStyle(color: Colors.red)),
-                                      ),
+                              Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                              const SizedBox(height: 16),
+                              Text(
+                                _errorMessage!,
+                                style: TextStyle(color: secondaryTextColor),
+                                textAlign: TextAlign.center,
                               ),
-                              // Products Section for Delivered Orders
-                              if (status == 'delivered' && products.isNotEmpty) ...[
-                                const Divider(height: 1),
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _fetchOrders,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _filteredOrders.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _selectedStatus == null ? Icons.shopping_bag_outlined : Icons.filter_list,
+                                    size: 64,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _selectedStatus == null
+                                        ? 'No orders yet'
+                                        : 'No $_selectedStatus orders found',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: secondaryTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _selectedStatus == null
+                                        ? 'Your order history will appear here'
+                                        : 'Try selecting a different filter',
+                                    style: TextStyle(
+                                      color: secondaryTextColor,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _filteredOrders.length,
+                              itemBuilder: (context, index) {
+                                final order = _filteredOrders[index];
+                                final status = order['status'] ?? 'Unknown';
+                                final isDelivered = status.toLowerCase() == 'delivered';
+                                final isReviewed = _isOrderFullyReviewed(order);
+                                final orderItems = order['order_items'] as List<dynamic>? ?? [];
+                                final totalAmount = order['total_amount']?.toString() ?? '0';
+                                final orderDate = order['created_at'] ?? 'N/A';
+
+                                return Card(
+                                  elevation: 2,
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(
+                                      color: isDelivered && isReviewed
+                                          ? Colors.green.shade200
+                                          : Colors.grey.shade200,
+                                    ),
+                                  ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text(
-                                        'Products',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: _getOrderBackgroundColor(order, status),
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(12),
+                                            topRight: Radius.circular(12),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      ...products.map((product) {
-                                        final hasReview = product['has_review'] ?? false;
-                                        return Card(
-                                          margin: const EdgeInsets.only(bottom: 8),
-                                          child: ListTile(
-                                            leading: product['image_url'] != null
-                                                ? ClipRRect(
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    child: Image.network(
-                                                      product['image_url'],
-                                                      width: 50,
-                                                      height: 50,
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder: (context, error, stackTrace) {
-                                                        return const Icon(Icons.image, size: 50);
-                                                      },
-                                                    ),
-                                                  )
-                                                : const Icon(Icons.image, size: 50),
-                                            title: Text(
-                                              product['name'],
-                                              style: const TextStyle(fontWeight: FontWeight.bold),
-                                            ),
-                                            subtitle: Text('Brand: ${product['brand']}'),
-                                            trailing: hasReview
-                                                ? Container(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green[50],
-                                                      borderRadius: BorderRadius.circular(12),
-                                                      border: Border.all(color: Colors.green),
-                                                    ),
-                                                    child: const Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Icon(
-                                                          Icons.check_circle,
-                                                          color: Colors.green,
-                                                          size: 16,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        'Order #${order['id']}',
+                                                        style: const TextStyle(
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 16,
                                                         ),
-                                                        SizedBox(width: 4),
-                                                        Text(
-                                                          'Reviewed',
-                                                          style: TextStyle(
-                                                            color: Colors.green,
-                                                            fontSize: 12,
+                                                      ),
+                                                      if (isDelivered && isReviewed) ...[
+                                                        const SizedBox(width: 8),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 2,
+                                                          ),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.green.shade100,
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              Icon(
+                                                                Icons.check_circle,
+                                                                size: 14,
+                                                                color: Colors.green.shade700,
+                                                              ),
+                                                              const SizedBox(width: 4),
+                                                              Text(
+                                                                'Reviewed',
+                                                                style: TextStyle(
+                                                                  color: Colors.green.shade700,
+                                                                  fontSize: 12,
+                                                                  fontWeight: FontWeight.w500,
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ),
                                                       ],
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    'Placed on $orderDate',
+                                                    style: TextStyle(
+                                                      color: secondaryTextColor,
+                                                      fontSize: 12,
                                                     ),
-                                                  )
-                                                : TextButton.icon(
-                                                    onPressed: () => _navigateToRateReview(order, product),
-                                                    icon: const Icon(Icons.star_border, size: 18),
-                                                    label: const Text('Rate & Review'),
-                                                    style: TextButton.styleFrom(
-                                                      foregroundColor: primaryColor,
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 8,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: _getStatusColor(status).withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: _getStatusColor(status),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                capitalizeStatus(status),
+                                                style: TextStyle(
+                                                  color: _getStatusColor(status),
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const Divider(height: 1),
+                                      Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Items',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            ...orderItems.map((item) => Padding(
+                                              padding: const EdgeInsets.only(bottom: 4),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: primaryColor.withOpacity(0.1),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      '${item['quantity']}x',
+                                                      style: TextStyle(
+                                                        color: primaryColor,
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: 12,
                                                       ),
                                                     ),
                                                   ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      item['product']['name'],
+                                                      style: const TextStyle(fontSize: 14),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            )),
+                                            const SizedBox(height: 16),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'Total Amount',
+                                                  style: TextStyle(
+                                                    color: secondaryTextColor,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Rs. $totalAmount',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (!isDelivered && status.toLowerCase() != 'cancelled') ...[
+                                              const SizedBox(height: 16),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.end,
+                                                children: [
+                                                  TextButton(
+                                                    onPressed: () => _cancelOrder(order['id']),
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor: Colors.red,
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 8,
+                                                      ),
+                                                    ),
+                                                    child: const Text('Cancel Order'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      if (isDelivered && order['products'] != null) ...[
+                                        const Divider(height: 1),
+                                        Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: const [
+                                                  Icon(Icons.star_border, size: 20),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    'Ratings & Reviews',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 12),
+                                              ...List<Widget>.from(
+                                                (order['products'] as List<dynamic>).map(
+                                                  (product) => Container(
+                                                    margin: const EdgeInsets.only(bottom: 8),
+                                                    padding: const EdgeInsets.all(12),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey[50],
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      border: Border.all(color: Colors.grey[200]!),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        if (product['image_url'] != null)
+                                                          ClipRRect(
+                                                            borderRadius: BorderRadius.circular(6),
+                                                            child: Image.network(
+                                                              product['image_url'],
+                                                              width: 50,
+                                                              height: 50,
+                                                              fit: BoxFit.cover,
+                                                              errorBuilder: (context, error, stackTrace) =>
+                                                                  Container(
+                                                                    width: 50,
+                                                                    height: 50,
+                                                                    color: Colors.grey[200],
+                                                                    child: const Icon(Icons.image, color: Colors.grey),
+                                                                  ),
+                                                            ),
+                                                          )
+                                                        else
+                                                          Container(
+                                                            width: 50,
+                                                            height: 50,
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.grey[200],
+                                                              borderRadius: BorderRadius.circular(6),
+                                                            ),
+                                                            child: const Icon(Icons.image, color: Colors.grey),
+                                                          ),
+                                                        const SizedBox(width: 12),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                product['name'],
+                                                                style: const TextStyle(
+                                                                  fontWeight: FontWeight.w500,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(height: 4),
+                                                              Text(
+                                                                product['brand'],
+                                                                style: TextStyle(
+                                                                  color: secondaryTextColor,
+                                                                  fontSize: 12,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        product['has_review'] == true
+                                                            ? Container(
+                                                                padding: const EdgeInsets.symmetric(
+                                                                  horizontal: 12,
+                                                                  vertical: 6,
+                                                                ),
+                                                                decoration: BoxDecoration(
+                                                                  color: Colors.green[50],
+                                                                  borderRadius: BorderRadius.circular(20),
+                                                                  border: Border.all(color: Colors.green),
+                                                                ),
+                                                                child: Row(
+                                                                  mainAxisSize: MainAxisSize.min,
+                                                                  children: const [
+                                                                    Icon(
+                                                                      Icons.check_circle,
+                                                                      color: Colors.green,
+                                                                      size: 16,
+                                                                    ),
+                                                                    SizedBox(width: 4),
+                                                                    Text(
+                                                                      'Reviewed',
+                                                                      style: TextStyle(
+                                                                        color: Colors.green,
+                                                                        fontWeight: FontWeight.w500,
+                                                                        fontSize: 12,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              )
+                                                            : TextButton.icon(
+                                                                onPressed: () =>
+                                                                    _navigateToRateReview(order, product),
+                                                                icon: const Icon(Icons.star_border, size: 18),
+                                                                label: const Text('Rate & Review'),
+                                                                style: TextButton.styleFrom(
+                                                                  foregroundColor: primaryColor,
+                                                                  padding: const EdgeInsets.symmetric(
+                                                                    horizontal: 16,
+                                                                    vertical: 8,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        );
-                                      }).toList(),
+                                        ),
+                                      ],
                                     ],
                                   ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                                );
+                              },
+                            ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'processing':
+        return Colors.blue;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+      case 'canceled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 }

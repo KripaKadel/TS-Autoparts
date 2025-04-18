@@ -1,6 +1,7 @@
 class Review {
   final int id;
-  final int mechanicId;
+  final int? mechanicId;
+  final int? productId;
   final int userId;
   final String userName;
   final double rating;
@@ -9,7 +10,8 @@ class Review {
 
   Review({
     required this.id,
-    required this.mechanicId,
+    this.mechanicId,
+    this.productId,
     required this.userId,
     required this.userName,
     required this.rating,
@@ -19,12 +21,13 @@ class Review {
 
   factory Review.fromJson(Map<String, dynamic> json) {
     return Review(
-      id: json['id'],
-      mechanicId: json['mechanic_id'],
-      userId: json['user_id'],
-      userName: json['user']['name'] ?? 'Anonymous',
+      id: json['id'] as int,
+      mechanicId: json['mechanic_id'] as int?,
+      productId: json['product_id'] as int?,
+      userId: json['user_id'] as int,
+      userName: json['user']?['name'] ?? 'Anonymous',
       rating: (json['rating'] as num).toDouble(),
-      comment: json['comment'],
+      comment: json['comment'] as String?,
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -33,6 +36,7 @@ class Review {
     return {
       'id': id,
       'mechanic_id': mechanicId,
+      'product_id': productId,
       'user_id': userId,
       'rating': rating,
       'comment': comment,
