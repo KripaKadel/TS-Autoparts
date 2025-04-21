@@ -152,4 +152,21 @@ class AppointmentController extends Controller
 
         return response()->json($mechanics);
     }
+    public function index()
+    {
+        $appointments = Appointment::with(['user', 'mechanic'])
+            ->latest()
+            ->paginate(10);
+
+        return view('admin.appointments.index', compact('appointments'));
+    }
+
+    /**
+     * Admin - Show appointment details
+     */
+    public function show(Appointment $appointment)
+    {
+        $appointment->load(['user', 'mechanic']);
+        return view('admin.appointments.show', compact('appointment'));
+    }
 }
