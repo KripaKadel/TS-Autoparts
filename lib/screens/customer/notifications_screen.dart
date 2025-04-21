@@ -97,6 +97,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               tooltip: 'Mark all as read',
             ),
         ],
+        foregroundColor: Colors.white, 
       ),
       body: _isLoading
           ? const Center(
@@ -108,6 +109,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Text('Loading notifications...'),
                 ],
               ),
+              
             )
           : _error != null
               ? Center(
