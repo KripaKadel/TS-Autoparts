@@ -123,46 +123,32 @@ class OrderController extends Controller
      */
     public function cancelOrder($id)
     {
-        $order = Order::where('id', $id)
-            ->where('user_id', Auth::id())
-            ->first();
-
-        if (!$order) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Order not found',
-                'error_code' => 'order_not_found',
-            ], 404);
-        }
-
-        if (in_array($order->status, ['shipped', 'delivered', 'canceled'])) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Order cannot be cancelled at this stage',
-                'error_code' => 'invalid_status',
-            ], 400);
-        }
-
-        DB::beginTransaction();
         try {
+            $order = Order::with(['user', 'orderItems.product'])
+                ->where('id', $id)
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
+            if (in_array($order->status, ['shipped', 'delivered', 'canceled'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Order cannot be cancelled at this stage',
+                    'error_code' => 'invalid_status',
+                ], 400);
+            }
+
+            $oldStatus = $order->status;
             $order->status = 'canceled';
             $order->save();
 
-            // Load relationships before notifying
-            $order->load('user');
-
             // Notify user
-            if ($order->user) {
-                $order->user->notify(new OrderNotification($order, 'canceled'));
-            }
+            $order->user->notify(new OrderNotification($order, 'status_updated', $oldStatus));
 
             // Notify admins
-            $admins = User::where('role', 'admin')->get();
+            $admins = User::where('role', User::ROLE_ADMIN)->get();
             foreach ($admins as $admin) {
-                $admin->notify(new OrderNotification($order, 'canceled'));
+                $admin->notify(new OrderNotification($order, 'status_updated', $oldStatus));
             }
-
-            DB::commit();
 
             return response()->json([
                 'status' => true,
@@ -171,9 +157,7 @@ class OrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Order cancellation failed: ' . $e->getMessage());
-            
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to cancel order',
@@ -184,30 +168,55 @@ class OrderController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:pending,processing,shipped,delivered,canceled',
-        ]);
-    
-        $order = Order::findOrFail($id);
-        $order->status = $request->status;
-        $order->save();
-    
-        // Optional: notify user/admins here
-    
-       
-        return redirect()
-        ->route('admin.orders.index')
-        ->with('success', 'Order status updated successfully.');
+        try {
+            $request->validate([
+                'status' => 'required|in:pending,processing,shipped,delivered,canceled',
+            ]);
+        
+            $order = Order::with(['user', 'orderItems.product'])->findOrFail($id);
+            
+            // Don't update if status is the same
+            if ($order->status === $request->status) {
+                return redirect()
+                    ->route('admin.orders.index')
+                    ->with('info', 'Order status is already ' . $request->status);
+            }
+            
+            $oldStatus = $order->status;
+            $order->status = $request->status;
+            $order->save();
+
+            // Send notification to the user
+            if ($order->user) {
+                $order->user->notify(new \App\Notifications\OrderNotification($order, 'status_updated', $oldStatus));
+            }
+            
+            // Notify all admins
+            $admins = User::where('role', User::ROLE_ADMIN)->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\OrderNotification($order, 'status_updated', $oldStatus));
+            }
+           
+            return redirect()
+                ->route('admin.orders.index')
+                ->with('success', 'Order status updated successfully from ' . $oldStatus . ' to ' . $request->status);
+                
+        } catch (\Exception $e) {
+            Log::error('Error updating order status: ' . $e->getMessage());
+            return redirect()
+                ->route('admin.orders.index')
+                ->with('error', 'Failed to update order status. Please try again.');
+        }
     }
 
     /**
      * Admin - View paginated list of all orders
      */
     public function index()
-{
-    $orders = Order::with('user', 'orderItems')->paginate(10);
-    return view('admin.orders.index', compact('orders')); // Pass data to Blade
-}
+    {
+        $orders = Order::with('user', 'orderItems')->paginate(10);
+        return view('admin.orders.index', compact('orders')); // Pass data to Blade
+    }
 
     /**
      * Admin - Show order details

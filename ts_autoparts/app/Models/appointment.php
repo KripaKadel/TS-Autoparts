@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\NotificationController;
 
 class Appointment extends Model
 {
@@ -27,4 +28,5 @@ class Appointment extends Model
 {
     return $this->hasOne(Reviews::class);
 }
+
 }

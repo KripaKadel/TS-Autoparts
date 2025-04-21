@@ -8,13 +8,12 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Contracts\Auth\MustVerifyEmail; // Import MustVerifyEmail interface
 use App\Notifications\VerifyEmail;
+
 class User extends Authenticatable implements MustVerifyEmail // Implement MustVerifyEmail
 {
     use HasFactory, HasApiTokens, Notifiable;
 
     protected $table = 'users';
-
-    
 
     protected $fillable = [
         'name', 
@@ -35,16 +34,15 @@ class User extends Authenticatable implements MustVerifyEmail // Implement MustV
     const ROLE_MECHANIC = 'mechanic';
 
     public function getProfileImageUrlAttribute()
-{
-    return $this->profile_image ? asset('storage/' . $this->profile_image) : null;
-}
-
-
-    public function sendEmailVerificationNotification()
     {
-        $this->notify(new VerifyEmail());
+        return $this->profile_image ? asset('storage/' . $this->profile_image) : null;
     }
-    // Your existing methods remain the same
+
+    //public function sendEmailVerificationNotification()
+    //{
+        //$this->notify(new VerifyEmail());
+    //}
+
     public function scopeAdmins($query)
     {
         return $query->where('role', self::ROLE_ADMIN);
@@ -60,7 +58,6 @@ class User extends Authenticatable implements MustVerifyEmail // Implement MustV
         return $query->where('role', self::ROLE_MECHANIC);
     }
 
-    // Your relationships remain the same
     public function orders()
     {
         return $this->hasMany(Order::class);
@@ -85,6 +82,4 @@ class User extends Authenticatable implements MustVerifyEmail // Implement MustV
     {
         return $this->hasMany(Payments::class);
     }
-
-    
 }

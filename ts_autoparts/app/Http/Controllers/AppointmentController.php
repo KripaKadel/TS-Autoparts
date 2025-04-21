@@ -6,13 +6,11 @@ use App\Models\Appointment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+use App\Notifications\AppointmentNotification;
 
 class AppointmentController extends Controller
 {
-    /**
-     * Get appointments for the logged-in mechanic (for mobile app)
-     */
     public function getMechanicAppointments(Request $request)
     {
         $mechanic = $request->user();
@@ -36,69 +34,106 @@ class AppointmentController extends Controller
 
         return response()->json($appointments);
     }
-
-    /**
-     * Get appointments for the logged-in user
-     */
-    public function getUserAppointments(Request $request)
-    {
-        $user = $request->user();
-        
-        $appointments = Appointment::with(['mechanic', 'review'])
-            ->where('user_id', $user->id)
-            ->orderByDesc('appointment_date')
-            ->get()
-            ->map(function ($appointment) {
-                $appointment->has_review = $appointment->review !== null;
-                return $appointment;
-            });
-
-        return response()->json($appointments);
-    }
+    
 
     /**
      * Store a new appointment
      */
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'mechanic_id' => 'required|exists:users,id',
-            'appointment_date' => 'required|date|after:now',
-            'service_type' => 'required|string',
-            'vehicle_info' => 'required|string',
-            'notes' => 'nullable|string',
-        ]);
+{
+    $validatedData = $request->validate([
+        'user_id' => 'required|exists:users,id',
+        'mechanic_id' => 'required|exists:users,id',
+        'service_description' => 'required|string',
+        'appointment_date' => 'required|date',
+        'time' => 'required|date_format:H:i',
+        'status' => 'required|string',
+    ]);
 
-        $appointment = new Appointment($validated);
-        $appointment->user_id = $request->user()->id;
-        $appointment->status = 'pending';
-        $appointment->save();
+    $appointmentDateTime = $validatedData['appointment_date'] . ' ' . $validatedData['time'];
 
+    $existingAppointment = Appointment::where('appointment_date', $appointmentDateTime)
+        ->where('mechanic_id', $validatedData['mechanic_id'])
+        ->first();
+
+    if ($existingAppointment) {
         return response()->json([
-            'message' => 'Appointment created successfully',
-            'appointment' => $appointment->load('mechanic', 'user')
-        ], 201);
+            'message' => 'The selected time slot is already taken. Please choose another time.',
+        ], 400);
+    }
+
+    $appointment = Appointment::create($validatedData);
+
+    // Notify the user
+    $user = User::find($validatedData['user_id']);
+    $user->notify(new AppointmentNotification($appointment, 'booked'));
+
+    // Notify the admin(s)
+    $admins = User::where('role', 'admin')->get();
+    foreach ($admins as $admin) {
+        $admin->notify(new AppointmentNotification($appointment, 'booked'));
+    }
+
+    return response()->json([
+        'message' => 'Appointment created successfully',
+        'data' => $appointment,
+    ], 201);
+}
+
+    /**
+     * Get appointments for the logged-in user (for mobile app)
+     */
+    public function getUserAppointments(Request $request)
+    {
+        $user = $request->user();
+
+        Log::info('Fetching appointments for user', ['user_id' => $user->id]);
+
+        $appointments = Appointment::with(['mechanic'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('appointment_date')
+            ->get();
+
+        return response()->json($appointments);
     }
 
     /**
-     * Cancel an appointment
+     * Cancel an appointment (only by the owner)
      */
-    public function cancel($id, Request $request)
+    public function cancel($id)
     {
-        $appointment = Appointment::findOrFail($id);
-        
-        if ($appointment->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        $appointment = Appointment::find($id);
+    
+        if (!$appointment) {
+            return response()->json([
+                'message' => 'Appointment not found',
+                'error_code' => 'appointment_not_found',
+            ], 404);
         }
-
-        if ($appointment->status === 'completed') {
-            return response()->json(['message' => 'Cannot cancel completed appointment'], 400);
+    
+        if ($appointment->user_id !== auth()->id()) {
+            return response()->json([
+                'message' => 'Unauthorized action',
+                'error_code' => 'unauthorized',
+            ], 403);
         }
-
-        $appointment->status = 'cancelled';
+    
+        $appointment->status = 'Canceled';
         $appointment->save();
-
-        return response()->json(['message' => 'Appointment cancelled successfully']);
+    
+        // Notify the user
+        $appointment->user->notify(new AppointmentNotification($appointment, 'canceled'));
+    
+        // Notify the admin(s)
+        $admins = User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new AppointmentNotification($appointment, 'canceled'));
+        }
+    
+        return response()->json([
+            'message' => 'Appointment cancelled successfully',
+            'appointment' => $appointment,
+        ]);
     }
 
     /**
@@ -152,6 +187,11 @@ class AppointmentController extends Controller
 
         return response()->json($mechanics);
     }
+    
+
+    /**
+     * Admin - View paginated list of all appointments
+     */
     public function index()
     {
         $appointments = Appointment::with(['user', 'mechanic'])

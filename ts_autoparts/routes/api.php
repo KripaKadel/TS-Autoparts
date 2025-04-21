@@ -14,6 +14,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\ReviewsController;
+use App\Http\Controllers\NotificationController;
 
 // ===================
 // 🚪 Authentication Routes
@@ -88,4 +89,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ⭐ Review Submission (Product or Mechanic)
     Route::post('/reviews', [ReviewsController::class, 'store']);
+
+    // 🔔 Notification Routes
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 });
