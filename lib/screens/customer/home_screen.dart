@@ -4,6 +4,7 @@ import 'package:ts_autoparts_app/main.dart';
 import 'package:ts_autoparts_app/services/product_service.dart';
 import 'package:ts_autoparts_app/models/product.dart';
 import 'package:ts_autoparts_app/screens/customer/product_description.dart';
+import 'package:ts_autoparts_app/screens/customer/notifications_screen.dart';
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -275,7 +276,14 @@ void _showFilterOptions(BuildContext context) {
           IconButton(
                     iconSize: 30,
                     icon: Icon(Icons.notifications_none, color: Colors.grey),
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsScreen(),
+                        ),
+                      );
+                    },
                   ),
         ],
       ),
