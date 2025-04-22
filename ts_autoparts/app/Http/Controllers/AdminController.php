@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Order;
 use App\Models\Products;
+use App\Models\Payments;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -43,13 +44,70 @@ class AdminController extends Controller
     public function dashboard()
     {
         // Fetch data for dashboard stats
-        $totalOrders = Order::count(); // Assuming you have an Order model
-        $totalAppointments = Appointment::count(); // Assuming you have an Appointment model
-        $totalProducts = Products::count(); // Assuming you have a Product model
-        $totalUsers = User::count(); // Assuming you have a User model
+        $totalOrders = Order::count();
+        $totalAppointments = Appointment::count();
+        $totalProducts = Products::count();
+        $totalUsers = User::count();
+        
+        // Payment statistics
+        $totalPayments = Payments::count();
+        $totalPaymentAmount = Payments::where('status', 'success')->sum('amount');
+        
+        // Calculate revenue for current month
+        $currentMonthRevenue = Payments::where('status', 'success')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('amount');
+            
+        // Calculate revenue for previous month
+        $previousMonthRevenue = Payments::where('status', 'success')
+            ->whereMonth('created_at', now()->subMonth()->month)
+            ->whereYear('created_at', now()->subMonth()->year)
+            ->sum('amount');
+            
+        // Calculate percentage change
+        $revenueChange = $previousMonthRevenue > 0 
+            ? (($currentMonthRevenue - $previousMonthRevenue) / $previousMonthRevenue) * 100 
+            : 0;
+            
+        // Fetch recent orders with user and order items
+        $recentOrders = Order::with(['user', 'orderItems'])
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+            
+        $recentPayments = Payments::with(['user', 'order', 'appointment'])
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+        
+        // Payment by type
+        $orderPayments = Payments::whereNotNull('order_id')->count();
+        $appointmentPayments = Payments::whereNotNull('appointment_id')->count();
+        
+        // Payment by status
+        $successPayments = Payments::where('status', 'success')->count();
+        $pendingPayments = Payments::where('status', 'pending')->count();
+        $failedPayments = Payments::where('status', 'failed')->count();
 
         // Pass the data to the view
-        return view('admin.dashboard', compact('totalOrders', 'totalAppointments', 'totalProducts', 'totalUsers'));
+        return view('admin.dashboard', compact(
+            'totalOrders', 
+            'totalAppointments', 
+            'totalProducts', 
+            'totalUsers',
+            'totalPayments',
+            'totalPaymentAmount',
+            'recentPayments',
+            'orderPayments',
+            'appointmentPayments',
+            'successPayments',
+            'pendingPayments',
+            'failedPayments',
+            'currentMonthRevenue',
+            'revenueChange',
+            'recentOrders'
+        ));
     }
 
     // Admin logout

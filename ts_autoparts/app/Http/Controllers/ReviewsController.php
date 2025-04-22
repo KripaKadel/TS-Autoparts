@@ -94,4 +94,15 @@ class ReviewsController extends Controller
         $reviews = Reviews::with('user', 'product', 'mechanic')->latest()->get();
         return response()->json($reviews);
     }
+
+    public function index()
+    {
+        $productReviews = Reviews::whereNotNull('product_id')->with('user', 'product')->latest()->get();
+
+        // Reviews linked to mechanics
+        $mechanicReviews = Reviews::whereNotNull('mechanic_id')->with('user', 'mechanic')->latest()->get();
+
+        // Your logic to retrieve reviews (if necessary)
+        return view('admin.reviews.index', compact('productReviews', 'mechanicReviews'));// Make sure the view exists
+    }
 }

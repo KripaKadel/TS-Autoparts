@@ -137,6 +137,46 @@ Mark all as read
             <h2 class="text-lg font-semibold text-gray-700 mb-6">Overview</h2>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total Revenue -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-md">
+                    <div class="p-5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Total Revenue</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-1">Rs {{ number_format($currentMonthRevenue, 2) }}</h3>
+                            </div>
+                            <div class="rounded-full p-3 bg-green-50">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 6v12"/>
+                                    <path d="M15 9.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm">
+                            <span class="{{ $revenueChange >= 0 ? 'text-green-500' : 'text-red-500' }} font-medium flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    @if($revenueChange >= 0)
+                                        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                                        <polyline points="16 7 22 7 22 13"/>
+                                    @else
+                                        <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/>
+                                        <polyline points="16 17 22 17 22 11"/>
+                                    @endif
+                                </svg>
+                                {{ number_format(abs($revenueChange), 1) }}%
+                            </span>
+                            <span class="text-gray-500 ml-2">from last month</span>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-5 py-3 border-t">
+                        <a href="{{ route('admin.payments.index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center">
+                            View Revenue Details
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Total Orders -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-md">
                     <div class="p-5">
@@ -269,31 +309,38 @@ Mark all as read
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    <!-- Sample data - replace with actual data from your controller -->
+                                    @forelse($recentOrders as $order)
                                     <tr>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">#ORD-2345</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">John Doe</td>
-                                        <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Completed</span>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
+                                            <a href="{{ route('admin.orders.show', $order->id) }}" class="text-indigo-600 hover:text-indigo-900">
+                                                #{{ $order->id }}
+                                            </a>
                                         </td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">$120.00</td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
+                                            {{ $order->user->name }}
+                                        </td>
+                                        <td class="px-3 py-3 whitespace-nowrap">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                                                @if($order->status == 'delivered') bg-green-100 text-green-800
+                                                @elseif($order->status == 'pending') bg-yellow-100 text-yellow-800
+                                                @elseif($order->status == 'processing') bg-blue-100 text-blue-800
+                                                @elseif($order->status == 'canceled') bg-red-100 text-red-800
+                                                @else bg-gray-100 text-gray-800
+                                                @endif">
+                                                {{ ucfirst($order->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
+                                            Rs {{ number_format($order->total_amount, 2) }}
+                                        </td>
                                     </tr>
+                                    @empty
                                     <tr>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">#ORD-2344</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">Jane Smith</td>
-                                        <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                        <td colspan="4" class="px-3 py-3 text-sm text-gray-500 text-center">
+                                            No recent orders found
                                         </td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">$85.50</td>
                                     </tr>
-                                    <tr>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">#ORD-2343</td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">Robert Johnson</td>
-                                        <td class="px-3 py-3 whitespace-nowrap">
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Processing</span>
-                                        </td>
-                                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900">$240.00</td>
-                                    </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
@@ -328,24 +375,17 @@ Mark all as read
                                     <p class="text-xs text-gray-500">Create a new user account</p>
                                 </div>
                             </a>
-                            <a href="#" class="flex items-center p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                                <div class="rounded-full p-2 bg-orange-50 mr-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">Create Invoice</p>
-                                    <p class="text-xs text-gray-500">Generate a new invoice</p>
-                                </div>
-                            </a>
-                            <a href="#" class="flex items-center p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
-                                <div class="rounded-full p-2 bg-blue-50 mr-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">Send Message</p>
-                                    <p class="text-xs text-gray-500">Contact customers</p>
-                                </div>
-                            </a>
+                            <div class="flex items-center space-x-4">
+                                <a href="{{ route('admin.reports.index') }}" class="flex items-center space-x-2 text-gray-600 hover:text-indigo-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                    <span>Generate Report</span>
+                                </a>
+                            </div>
+                        
                         </div>
                     </div>
                 </div>

@@ -15,6 +15,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentController;
 
 // ===================
 // 🚪 Authentication Routes
@@ -86,6 +87,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'getUserOrders']);
     Route::get('/orders/{orderId}', [OrderController::class, 'getOrderDetails']);
     Route::patch('/orders/{id}/cancel', [OrderController::class, 'cancelOrder']);
+
+    // 💰 Payment Routes
+    Route::post('/orders/{orderId}/payment', [PaymentController::class, 'processOrderPayment']);
+    Route::post('/appointments/{appointmentId}/payment', [PaymentController::class, 'processAppointmentPayment']);
+    Route::get('/payments', [PaymentController::class, 'getUserPayments']);
+    Route::get('/payments/{paymentId}', [PaymentController::class, 'getPaymentDetails']);
 
     // ⭐ Review Submission (Product or Mechanic)
     Route::post('/reviews', [ReviewsController::class, 'store']);

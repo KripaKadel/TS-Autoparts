@@ -109,9 +109,19 @@
             <i class="fas fa-users mr-3"></i> Users
         </a>
 
+        <!-- Payments link -->
+        <a href="{{ route('admin.payments.index') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
+            <i class="fas fa-money-bill-wave mr-3"></i> Payments
+        </a>
+
         <!-- Categories link -->
         <a href="{{ route('admin.categories.index') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
             <i class="fas fa-th-list mr-3"></i> Categories
+        </a>
+
+        <!-- Reviews link -->
+        <a href="{{ route('admin.reviews.index') }}" class="flex items-center py-3 px-4 text-white hover:bg-blue-700">
+            <i class="fas fa-star mr-3"></i> Reviews
         </a>
 
         <!-- Logout Button -->

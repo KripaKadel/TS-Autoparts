@@ -19,7 +19,11 @@ class CreatePaymentsTable extends Migration
             $table->unsignedBigInteger('order_id')->nullable();
             $table->unsignedBigInteger('appointment_id')->nullable();
             $table->string('payment_method');
+            $table->decimal('amount', 10, 2);
+            $table->string('transaction_id')->nullable();
+            $table->timestamp('payment_date')->nullable();
             $table->enum('status', ['pending', 'success', 'failed'])->default('pending');
+            $table->json('payment_details')->nullable();
             $table->timestamps();
 
             // Foreign key constraints

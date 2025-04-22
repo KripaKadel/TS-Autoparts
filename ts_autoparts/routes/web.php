@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request; // ✅ Add this
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CategoryController;
@@ -10,6 +10,9 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ReviewsController; // ✅ Added this
+use App\Http\Controllers\ReportsController;
 
 // Public Routes
 Route::middleware('web')->group(function () {
@@ -47,6 +50,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::patch('/{id}/status', 'updateStatus')->name('updateStatus'); 
     });
 
+    // Payments Management
+    Route::prefix('payments')->name('payments.')->controller(PaymentController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/{id}', 'show')->name('show');
+    });
+
     // Category Management
     Route::prefix('categories')->name('categories.')->controller(CategoryController::class)->group(function () {
         Route::get('/', 'index')->name('index');
@@ -77,6 +86,17 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::put('/update/{user}', 'update')->name('update');
         Route::delete('/delete/{user}', 'destroy')->name('destroy');
         Route::post('/import', 'import')->name('import');
+    });
+
+    // Reviews Management ✅ NEW SECTION
+    Route::prefix('reviews')->name('reviews.')->controller(ReviewsController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+    });
+
+    // Reports Management
+    Route::prefix('reports')->name('reports.')->controller(ReportsController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/generate', 'generateReport')->name('generate');
     });
 
     // System Settings
