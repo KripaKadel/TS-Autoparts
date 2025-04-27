@@ -17,11 +17,14 @@ class ServicesScreen extends StatefulWidget {
 class _ServicesScreenState extends State<ServicesScreen> {
   final AuthService _authService = AuthService();
   String serviceType = "Select Service Type";
-  DateTime selectedDate = DateTime.now();
+  DateTime selectedDate = DateTime.now().add(const Duration(days: 1)); 
   TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
   String selectedMechanic = "Select Mechanic";
   int? selectedMechanicId;
   bool isLoading = false;
+  bool isFirstBooking = false;
+  double appointmentCharge = 500.0;
+  double discountedCharge = 450.0; // 10% off
 
   bool _isServiceTypeValid = true;
   bool _isDateValid = true;
@@ -29,14 +32,14 @@ class _ServicesScreenState extends State<ServicesScreen> {
   bool _isMechanicValid = true;
 
   final Color primaryColor = const Color(0xFF144FAB);
-  final double appointmentCharge = 500.0;
 
   List<String> serviceTypes = [
     "Oil Change",
     "Tire Rotation",
     "Brake Service",
     "Engine Tune-up",
-    "Fluid Check"
+    "Fluid Check",
+    "Gem"
   ];
   List<Map<String, dynamic>> mechanics = [];
 
@@ -44,6 +47,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   void initState() {
     super.initState();
     _checkAuthAndFetchMechanics();
+    _checkFirstBooking();
   }
 
   Future<void> _checkAuthAndFetchMechanics() async {
@@ -92,16 +96,46 @@ class _ServicesScreenState extends State<ServicesScreen> {
     return token;
   }
 
+  Future<void> _checkFirstBooking() async {
+    try {
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/user/appointments'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> appointments = json.decode(response.body);
+        setState(() {
+          isFirstBooking = appointments.isEmpty;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking first booking: $e');
+    }
+  }
+
   void _redirectToLogin() {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
   void _handleError(dynamic e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: ${e.toString()}')),
-    );
-    if (e.toString().contains('authenticated')) {
-      _redirectToLogin();
+    debugPrint('Error details: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Dismiss',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
     }
   }
 
@@ -113,6 +147,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
       return;
     }
 
+    final charge = isFirstBooking ? discountedCharge : appointmentCharge;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -121,23 +157,40 @@ class _ServicesScreenState extends State<ServicesScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Appointment Charge:'),
-              const SizedBox(height: 8),
-              Text('Rs.$appointmentCharge', 
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[900],
+              if (isFirstBooking) ...[
+                const Text('First Booking Discount (10% off)'),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Original Price:'),
+                    Text('Rs.$appointmentCharge', 
+                      style: TextStyle(
+                        decoration: TextDecoration.lineThrough,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Discount:'),
+                    Text('-Rs.${(appointmentCharge * 0.1).toStringAsFixed(2)}', 
+                      style: const TextStyle(color: Colors.green),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 8),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('Rs.$appointmentCharge', 
+                  Text('Rs.$charge', 
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.blue[900],
@@ -172,8 +225,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
   bool _validateFields() {
     setState(() {
       _isServiceTypeValid = serviceType != "Select Service Type";
-      _isDateValid = selectedDate != DateTime.now();
-      _isTimeValid = selectedTime != const TimeOfDay(hour: 9, minute: 0);
+      _isDateValid = selectedDate.isAfter(DateTime.now());
+      _isTimeValid = selectedTime.hour >= 9 && selectedTime.hour < 17;
       _isMechanicValid = selectedMechanic != "Select Mechanic";
     });
 
@@ -186,10 +239,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
     setState(() => isLoading = true);
 
     try {
+      final charge = isFirstBooking ? discountedCharge : appointmentCharge;
       final esewa = Esewa(
         context: context,
         productName: "Service Appointment: $serviceType",
-        amount: appointmentCharge,
+        amount: charge,
         onSuccess: () async {
           await _createAppointment();
           setState(() => isLoading = false);
@@ -230,8 +284,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
       final formattedTime = '${selectedTime.hour.toString().padLeft(2, '0')}:'
                           '${selectedTime.minute.toString().padLeft(2, '0')}';
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/appointments'),
+      final charge = isFirstBooking ? discountedCharge : appointmentCharge;
+
+      // First create the appointment
+      final createAppointmentUrl = Uri.parse('$baseUrl/api/appointments');
+      final appointmentResponse = await http.post(
+        createAppointmentUrl,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -242,18 +300,122 @@ class _ServicesScreenState extends State<ServicesScreen> {
           'service_description': serviceType,
           'appointment_date': DateFormat('yyyy-MM-dd').format(selectedDate),
           'time': formattedTime,
-          'status': 'confirmed',
-          'amount': appointmentCharge,
+          'status': 'pending',
+          'amount': charge,
+          'is_first_booking': isFirstBooking,
         }),
       );
 
-      if (response.statusCode != 201) {
-        throw Exception('Failed to create appointment: ${response.body}');
+      debugPrint('Appointment creation response: ${appointmentResponse.body}');
+
+      if (appointmentResponse.statusCode == 201) {
+        final appointmentData = json.decode(appointmentResponse.body);
+        debugPrint('Parsed appointment data: $appointmentData');
+        
+        // Check for both possible response formats
+        final int? appointmentId = appointmentData['id'] ?? 
+                                 appointmentData['appointment']?['id'] ?? 
+                                 (appointmentData['data']?['id'] as int?);
+
+        if (appointmentId != null) {
+          final referenceId = "APT-${DateTime.now().millisecondsSinceEpoch}";
+          await _processAppointmentPayment(appointmentId, referenceId);
+        } else {
+          debugPrint('Response structure: ${appointmentData.keys.join(', ')}');
+          throw Exception('Invalid appointment response format: Missing appointment ID. Response: ${appointmentResponse.body}');
+        }
+      } else {
+        final errorData = json.decode(appointmentResponse.body);
+        throw Exception(errorData['message'] ?? 'Failed to create appointment');
       }
     } catch (e) {
+      debugPrint('Appointment creation error: $e');
       _handleError(e);
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _processAppointmentPayment(int appointmentId, String transactionId) async {
+    try {
+      final token = await _getToken();
+      
+      final paymentUrl = Uri.parse('$baseUrl/api/appointments/$appointmentId/payment');
+      debugPrint('Sending payment request to: $paymentUrl');
+      
+      final paymentData = {
+        'payment_method': 'esewa',
+        'amount': appointmentCharge.toString(), // Convert to string to ensure proper format
+        'transaction_id': transactionId,
+        'payment_details': {
+          'payment_type': 'appointment',
+          'service_type': serviceType,
+          'mechanic_id': selectedMechanicId,
+          'mechanic_name': selectedMechanic,
+          'appointment_date': DateFormat('yyyy-MM-dd').format(selectedDate),
+          'appointment_time': '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+          'service_charge': appointmentCharge,
+        },
+      };
+
+      debugPrint('Payment request data: ${json.encode(paymentData)}');
+
+      final response = await http.post(
+        paymentUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json', // Add Accept header
+        },
+        body: json.encode(paymentData),
+      );
+
+      debugPrint('Payment response status code: ${response.statusCode}');
+      debugPrint('Payment response headers: ${response.headers}');
+      debugPrint('Payment response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        debugPrint('Parsed payment response: $responseData');
+        
+        if (responseData['status'] == true) {
+          return;
+        } else {
+          throw Exception('Payment failed: ${responseData['message'] ?? 'Unknown error'}');
+        }
+      } else if (response.statusCode == 422) {
+        // Validation error
+        final errorData = json.decode(response.body);
+        final errors = errorData['errors'] ?? {};
+        final errorMessages = errors.values.join(', ');
+        throw Exception('Validation error: $errorMessages');
+      } else if (response.statusCode == 500) {
+        // Server error
+        String errorMessage;
+        try {
+          final errorData = json.decode(response.body);
+          errorMessage = errorData['message'] ?? errorData['error'] ?? 'Internal server error';
+        } catch (e) {
+          errorMessage = 'Internal server error: ${response.body}';
+        }
+        debugPrint('Server error details: $errorMessage');
+        throw Exception('Server error: $errorMessage');
+      } else {
+        String errorMessage;
+        try {
+          final errorData = json.decode(response.body);
+          errorMessage = errorData['message'] ?? 'Unknown error';
+        } catch (e) {
+          errorMessage = 'Failed to process payment: ${response.body}';
+        }
+        throw Exception('Payment failed with status ${response.statusCode}: $errorMessage');
+      }
+    } catch (e) {
+      debugPrint('Payment processing error: $e');
+      if (e is FormatException) {
+        debugPrint('Invalid JSON response from server');
+      }
+      rethrow;
     }
   }
 
@@ -674,8 +836,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime.now(),
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now().add(const Duration(days: 1)),
       lastDate: DateTime(2101),
     );
     if (picked != null && picked != selectedDate) {
@@ -689,11 +851,27 @@ class _ServicesScreenState extends State<ServicesScreen> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: selectedTime,
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
+    
     if (picked != null && picked != selectedTime) {
-      setState(() {
-        selectedTime = picked;
-      });
+      if (picked.hour >= 9 && picked.hour < 17) {
+        setState(() {
+          selectedTime = picked;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select time between 9 AM and 5 PM'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 }

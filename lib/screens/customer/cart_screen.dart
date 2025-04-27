@@ -11,6 +11,11 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  final List<String> pokharaLocations = [
+    'Lakeside','Nayabazar','Prithvi Chowk','Mahendrapool','Newroad','Shantiban','Hospital Chowk','Siddhartha Chowk','Bagar','Srijana Chowk'
+  ];
+
+  String? _selectedLocation; 
   List<CartItem> cartItems = [];
   bool isLoading = true;
   double totalAmount = 0.0;
@@ -154,97 +159,110 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  void _showAddressDialog() {
-    if (cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your cart is empty!')),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Delivery Address', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _addressController,
-                decoration: InputDecoration(
-                  hintText: 'Enter your full delivery address',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                ),
-                maxLines: 3,
-                keyboardType: TextInputType.streetAddress,
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Please provide your complete address for delivery',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              onPressed: () {
-                if (_addressController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Please enter your delivery address')),
-                  );
-                  return;
-                }
-                setState(() {
-                  _deliveryAddress = _addressController.text.trim();
-                });
-                Navigator.pop(context);
-                _showPaymentDialog();
-              },
-              child: const Text('Continue', 
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
+ void _showAddressDialog() {
+  if (cartItems.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Your cart is empty!')),
     );
+    return;
   }
 
-  void _showPaymentDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Delivery to:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text(_deliveryAddress, 
-                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                textAlign: TextAlign.center,
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Select Delivery Location', 
+          style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: DropdownButton<String>(
+                isExpanded: true,
+                hint: Text('Select your location in Pokhara'),
+                value: _selectedLocation,
+                underline: SizedBox(), // Remove default underline
+                items: pokharaLocations.map((String location) {
+                  return DropdownMenuItem<String>(
+                    value: location,
+                    child: Text(location),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedLocation = newValue;
+                  });
+                },
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'We only deliver inside Pokhara.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            onPressed: () {
+              if (_selectedLocation == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please select a delivery location')),
+                );
+                return;
+              }
+              setState(() {
+                _deliveryAddress = _selectedLocation!;
+              });
+              Navigator.pop(context);
+              _showPaymentDialog();
+            },
+            child: const Text('Continue', 
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+  void _showPaymentDialog() {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Delivery to:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            SizedBox(height: 4),
+            Text(_deliveryAddress, 
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              textAlign: TextAlign.center,
+            ),
               SizedBox(height: 16),
               const Text('Total Amount:', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
@@ -325,36 +343,94 @@ class _CartScreenState extends State<CartScreen> {
           } catch (e) {
             if (mounted) {
               setState(() => isProcessingPayment = false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Order creation failed: ${e.toString()}')),
-              );
+              _showErrorSnackBar('Order creation failed: ${e.toString()}');
             }
           }
         },
         onFailure: () {
           if (mounted) {
             setState(() => isProcessingPayment = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Payment failed. Please try again.')),
-            );
+            _showErrorSnackBar('Payment failed. Please try again.');
           }
         },
         onCancel: () {
           if (mounted) {
             setState(() => isProcessingPayment = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Payment cancelled.')),
-            );
+            _showErrorSnackBar('Payment cancelled.');
           }
         },
       ).pay();
     } catch (e) {
       if (mounted) {
         setState(() => isProcessingPayment = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment error: ${e.toString()}')),
-        );
+        _showErrorSnackBar('Payment error: ${e.toString()}');
       }
+    }
+  }
+
+  Future<void> _processOrderPayment(int orderId, String transactionId) async {
+    try {
+      final token = await SecureStorage.getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final paymentUrl = Uri.parse('http://10.0.2.2:8000/api/orders/$orderId/payment');
+      debugPrint('Sending payment request to: $paymentUrl');
+      
+      final paymentData = {
+        'payment_method': 'esewa',
+        'transaction_id': transactionId,
+        'payment_details': {
+          'payment_type': 'order',
+          'items_count': cartItems.length,
+          'delivery_address': _deliveryAddress,
+          'items': cartItems.map((item) => {
+            'product_id': item.product.id,
+            'name': item.product.name,
+            'quantity': item.quantity,
+            'price': item.product.price,
+          }).toList(),
+        },
+      };
+      
+      debugPrint('Payment request body: ${jsonEncode(paymentData)}');
+
+      final response = await http.post(
+        paymentUrl,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(paymentData),
+      );
+
+      debugPrint('Payment response status code: ${response.statusCode}');
+      debugPrint('Payment response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        debugPrint('Parsed payment response: $responseData');
+        
+        if (responseData['status'] == true) {
+          return;
+        } else {
+          throw Exception('Payment failed: ${responseData['message'] ?? 'Unknown error'}');
+        }
+      } else if (response.statusCode == 422) {
+        // Validation error
+        final errorData = jsonDecode(response.body);
+        final errors = errorData['errors'] ?? {};
+        final errorMessages = errors.values.join(', ');
+        throw Exception('Validation error: $errorMessages');
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception('Payment failed with status ${response.statusCode}: ${errorData['message'] ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      debugPrint('Payment processing error: $e');
+      if (e is FormatException) {
+        debugPrint('Invalid JSON response from server');
+      }
+      rethrow;
     }
   }
 
@@ -371,35 +447,74 @@ class _CartScreenState extends State<CartScreen> {
         };
       }).toList();
 
-      final url = Uri.parse('http://10.0.2.2:8000/api/orders/create');
-      final response = await http.post(
-        url,
+      final orderData = {
+        'payment_reference': referenceId,
+        'total_amount': totalAmount,
+        'order_items': orderItems,
+        'delivery_address': _deliveryAddress,
+      };
+
+      // First create the order
+      final createOrderUrl = Uri.parse('http://10.0.2.2:8000/api/orders/create');
+      debugPrint('Sending order creation request to: $createOrderUrl');
+      debugPrint('Order request body: ${jsonEncode(orderData)}');
+
+      final orderResponse = await http.post(
+        createOrderUrl,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'payment_reference': referenceId,
-          'total_amount': totalAmount,
-          'order_items': orderItems,
-          'delivery_address': _deliveryAddress,
-        }),
+        body: jsonEncode(orderData),
       );
 
-      final responseData = jsonDecode(response.body);
+      debugPrint('Order creation response status code: ${orderResponse.statusCode}');
+      debugPrint('Order creation response body: ${orderResponse.body}');
       
-      if (response.statusCode == 201) {
-        return;
-      } else {
-        String errorMessage = responseData['message'] ?? 'Failed to create order';
-        if (responseData['errors'] != null) {
-          errorMessage += '\nErrors: ${responseData['errors'].toString()}';
+      if (orderResponse.statusCode == 201) {
+        final orderResponseData = jsonDecode(orderResponse.body);
+        debugPrint('Parsed order response: $orderResponseData');
+        
+        // Check for both possible response formats
+        final int? orderId = orderResponseData['id'] ?? 
+                           orderResponseData['order']?['id'] ?? 
+                           (orderResponseData['data']?['id'] as int?);
+
+        if (orderId != null) {
+          await _processOrderPayment(orderId, referenceId);
+          return;
+        } else {
+          debugPrint('Response structure: ${orderResponseData.keys.join(', ')}');
+          throw Exception('Invalid order response format: Missing order ID. Response: ${orderResponse.body}');
         }
-        throw Exception(errorMessage);
+      } else if (orderResponse.statusCode == 422) {
+        // Validation error
+        final errorData = jsonDecode(orderResponse.body);
+        final errors = errorData['errors'] ?? {};
+        final errorMessages = errors.values.join(', ');
+        throw Exception('Validation error: $errorMessages');
+      } else {
+        final errorData = jsonDecode(orderResponse.body);
+        throw Exception('Order creation failed with status ${orderResponse.statusCode}: ${errorData['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       debugPrint('Order creation error: $e');
+      if (e is FormatException) {
+        debugPrint('Invalid JSON response from server');
+      }
       rethrow;
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
     }
   }
 
@@ -427,9 +542,7 @@ class _CartScreenState extends State<CartScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to clear cart: ${e.toString()}')),
-        );
+        _showErrorSnackBar('Failed to clear cart: ${e.toString()}');
       }
     }
   }

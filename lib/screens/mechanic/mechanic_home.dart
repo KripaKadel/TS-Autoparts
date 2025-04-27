@@ -60,45 +60,8 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
     );
   }
 
-  // Placeholder for Job List Screen
-  Widget _jobListPlaceholder() {
-    return Center(child: Text('Job List Screen (Placeholder)'));
-  }
-
-  // Placeholder for Customer Requests Screen
-  Widget _customerRequestsPlaceholder() {
-    return Center(child: Text('Customer Requests Screen (Placeholder)'));
-  }
-
-  // Placeholder for Update Profile Screen
-  Widget _updateProfilePlaceholder() {
-    return Center(child: Text('Update Profile Screen (Placeholder)'));
-  }
-
-  // Navigate to job list placeholder
-  void _goToJobList() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => _jobListPlaceholder()),
-    );
-  }
-
-  // Navigate to customer requests placeholder
-  void _goToCustomerRequests() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => _customerRequestsPlaceholder()),
-    );
-  }
-
-  // Navigate to update profile placeholder
-  void _goToUpdateProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => _updateProfilePlaceholder()),
-    );
-  }
-
+  
+ 
   // Navigate to appointments
   void _goToAppointments() {
     Navigator.push(
@@ -150,42 +113,7 @@ class _MechanicHomeScreenState extends State<MechanicHomeScreen> {
                     ),
                     child: Text('View Appointments'),
                   ),
-                  SizedBox(height: 16),
-                  // View Jobs Button
-                  ElevatedButton(
-                    onPressed: _goToJobList,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF144FAB),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      textStyle: TextStyle(fontSize: 18),
-                    ),
-                    child: Text('View Jobs'),
-                  ),
-                  SizedBox(height: 16),
-                  // View Customer Requests Button
-                  ElevatedButton(
-                    onPressed: _goToCustomerRequests,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF144FAB),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      textStyle: TextStyle(fontSize: 18),
-                    ),
-                    child: Text('View Customer Requests'),
-                  ),
-                  SizedBox(height: 16),
-                  // Update Profile Button
-                  ElevatedButton(
-                    onPressed: _goToUpdateProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF144FAB),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      textStyle: TextStyle(fontSize: 18),
-                    ),
-                    child: Text('Update Profile'),
-                  ),
+                  
                   SizedBox(height: 16),
                 ],
               ),

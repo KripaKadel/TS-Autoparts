@@ -15,6 +15,7 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['openid', 'email', 'profile'],
     serverClientId: '30762665291-87vvgm2r0l6ssselbh16u090k0oetu60.apps.googleusercontent.com',
+     signInOption: SignInOption.standard,
   );
 
   // Create a reusable HTTP client with SSL verification
@@ -43,48 +44,54 @@ class AuthService {
   // ==================== GOOGLE AUTH METHODS ====================
 
   Future<User?> loginWithGoogle() async {
-    try {
-      debugPrint('Starting Google Sign-In...');
-      final googleAccount = await _googleSignIn.signIn();
-      if (googleAccount == null) {
-        throw Exception('User cancelled Google Sign-In');
-      }
-
-      final googleAuth = await googleAccount.authentication;
-      if (googleAuth.idToken == null) {
-        throw Exception('No ID token received from Google');
-      }
-
-      debugPrint('Google authentication successful for ${googleAccount.email}');
-
-      final client = await _httpClient;
-      final response = await client.post(
-        Uri.parse('$baseUrl/api/auth/google/mobile'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'id_token': googleAuth.idToken,
-          'email': googleAccount.email,
-          'name': googleAccount.displayName,
-          'google_id': googleAccount.id,
-          'photo_url': googleAccount.photoUrl,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        final user = User.fromJson(responseData['user']);
-        final token = responseData['token'];
-        
-        await _saveUserData(user, token);
-        return user;
-      } else {
-        throw Exception('Failed to authenticate with backend: ${response.body}');
-      }
-    } catch (e) {
-      debugPrint('Google login error: $e');
-      rethrow;
+  try {
+    debugPrint('Starting Google Sign-In...');
+    
+    // First, sign out any existing session to force account selection
+    await _googleSignIn.signOut();
+    
+    // Then sign in with account selection
+    final googleAccount = await _googleSignIn.signIn();
+    
+    if (googleAccount == null) {
+      throw Exception('User cancelled Google Sign-In');
     }
+
+    final googleAuth = await googleAccount.authentication;
+    if (googleAuth.idToken == null) {
+      throw Exception('No ID token received from Google');
+    }
+
+    debugPrint('Google authentication successful for ${googleAccount.email}');
+
+    final client = await _httpClient;
+    final response = await client.post(
+      Uri.parse('$baseUrl/api/auth/google/mobile'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'id_token': googleAuth.idToken,
+        'email': googleAccount.email,
+        'name': googleAccount.displayName,
+        'google_id': googleAccount.id,
+        'photo_url': googleAccount.photoUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      final user = User.fromJson(responseData['user']);
+      final token = responseData['token'];
+      
+      await _saveUserData(user, token);
+      return user;
+    } else {
+      throw Exception('Failed to authenticate with backend: ${response.body}');
+    }
+  } catch (e) {
+    debugPrint('Google login error: $e');
+    rethrow;
   }
+}
 
   Future<void> googleSignOut() async {
     try {
@@ -205,34 +212,33 @@ class AuthService {
       body: jsonEncode({'email': email, 'password': password}),
     );
 
+    debugPrint('Login response: ${response.statusCode} - ${response.body}');
+
     if (response.statusCode == 200) {
       final responseBody = json.decode(response.body);
-
       final userJson = responseBody['user'];
       final token = responseBody['access_token'];
-      final role = userJson['role'] ?? 'customer'; // default to 'customer'
+      final role = userJson['role'] ?? 'customer';
 
-      // Inject token into the user JSON so User.fromJson works properly
       final user = User.fromJson({
         ...userJson,
         'access_token': token,
       });
 
-      // Store token, user, and role in secure storage
       await _saveUserData(user, token);
       await _storage.write(key: 'role', value: role);
 
       return user;
     } else {
-      debugPrint('Login failed: ${response.body}');
-      return null;
+      final errorResponse = json.decode(response.body);
+      final errorType = errorResponse['error_type'] ?? 'unknown_error';
+      throw Exception(errorType);
     }
   } catch (e) {
     debugPrint('Login exception: $e');
-    return null;
+    rethrow;
   }
 }
-
 
   Future<User?> getAuthenticatedUser() async {
     try {

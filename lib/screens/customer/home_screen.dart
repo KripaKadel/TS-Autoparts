@@ -363,7 +363,7 @@ void _showFilterOptions(BuildContext context) {
                             
                             // Promotional Banner
                             Container(
-                              height: 180,
+                              height: 200,
                               padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: Color(0xFFF2F7FF),
@@ -386,12 +386,16 @@ void _showFilterOptions(BuildContext context) {
                                           text: TextSpan(
                                             children: [
                                               TextSpan(
-                                                text: 'Get Up to ',
+                                                text: 'Parts That ',
                                                 style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
                                               ),
                                               TextSpan(
-                                                text: '50% Off',
+                                                text: 'Power',
                                                 style: TextStyle(color: Color(0xFF144FAB), fontSize: 20, fontWeight: FontWeight.bold),
+                                              ),
+                                               TextSpan(
+                                                text: 'Your Journey',
+                                                style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
                                               ),
                                             ],
                                           ),
@@ -539,16 +543,8 @@ void _showFilterOptions(BuildContext context) {
                                           text: TextSpan(
                                             children: [
                                               TextSpan(
-                                                text: 'Get ',
-                                                style: TextStyle(color: Colors.black, fontSize: 18),
-                                              ),
-                                              TextSpan(
-                                                text: '10% off',
-                                                style: TextStyle(color: Color(0xFF144FAB), fontSize: 18, fontWeight: FontWeight.bold),
-                                              ),
-                                              TextSpan(
-                                                text: ' on your first service!',
-                                                style: TextStyle(color: Colors.black, fontSize: 18),
+                                                text: 'Give Your Car the Care It Deserves!',
+                                                style: TextStyle(color: Colors.black, fontSize: 18,fontWeight: FontWeight.bold),
                                               ),
                                             ],
                                           ),

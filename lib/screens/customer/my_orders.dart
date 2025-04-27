@@ -390,12 +390,16 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                                   Row(
                                                     children: [
                                                       Text(
-                                                        'Order #${order['id']}',
-                                                        style: const TextStyle(
-                                                          fontWeight: FontWeight.bold,
-                                                          fontSize: 16,
-                                                        ),
-                                                      ),
+  orderItems.isNotEmpty 
+    ? (orderItems.length == 1 
+        ? orderItems.first['product']['name'] ?? 'Product'
+        : '${orderItems.first['product']['name']} + ${orderItems.length - 1} more')
+    : 'No products',
+  style: const TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 16,
+  ),
+),
                                                       if (isDelivered && isReviewed) ...[
                                                         const SizedBox(width: 8),
                                                         Container(
