@@ -16,7 +16,8 @@ class Order extends Model
         'user_id',
         'order_date',
         'status',
-        'total_amount'
+        'total_amount',
+        'address'
     ];
 
     public function orderItems()

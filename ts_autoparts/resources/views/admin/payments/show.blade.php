@@ -1,175 +1,139 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('title', 'Payment Details')
 
 @section('content')
-<div class="container-fluid px-4">
-    <h1 class="mt-4">Payment Details</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="{{ route('admin.payments.index') }}">Payments</a></li>
-        <li class="breadcrumb-item active">Payment #{{ $payment->id }}</li>
-    </ol>
-
-    <div class="row">
-        <div class="col-xl-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Payment Information
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <tbody>
-                                <tr>
-                                    <th style="width: 30%">Payment ID</th>
-                                    <td>{{ $payment->id }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Customer</th>
-                                    <td>{{ $payment->user->name }} ({{ $payment->user->email }})</td>
-                                </tr>
-                                <tr>
-                                    <th>Payment Type</th>
-                                    <td>
-                                        @if($payment->order_id)
-                                            <span class="badge bg-primary">Order Payment</span>
-                                        @elseif($payment->appointment_id)
-                                            <span class="badge bg-info">Appointment Payment</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Reference</th>
-                                    <td>
-                                        @if($payment->order_id)
-                                            <a href="{{ route('admin.orders.show', $payment->order_id) }}">Order #{{ $payment->order_id }}</a>
-                                        @elseif($payment->appointment_id)
-                                            <a href="{{ route('admin.appointments.show', $payment->appointment_id) }}">Appointment #{{ $payment->appointment_id }}</a>
-                                        @endif
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Amount</th>
-                                    <td>${{ number_format($payment->amount, 2) }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Payment Method</th>
-                                    <td>{{ $payment->payment_method }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Transaction ID</th>
-                                    <td>{{ $payment->transaction_id }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Payment Date</th>
-                                    <td>{{ $payment->payment_date ? $payment->payment_date->format('M d, Y H:i') : 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Status</th>
-                                    <td>
-                                        @if($payment->status == 'success')
-                                            <span class="badge bg-success">Success</span>
-                                        @elseif($payment->status == 'pending')
-                                            <span class="badge bg-warning">Pending</span>
-                                        @else
-                                            <span class="badge bg-danger">Failed</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Created At</th>
-                                    <td>{{ $payment->created_at->format('M d, Y H:i') }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Updated At</th>
-                                    <td>{{ $payment->updated_at->format('M d, Y H:i') }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fas fa-list me-1"></i>
-                    Payment Details
-                </div>
-                <div class="card-body">
-                    @if($payment->payment_details)
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Key</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($payment->payment_details as $key => $value)
-                                        <tr>
-                                            <th>{{ ucfirst(str_replace('_', ' ', $key)) }}</th>
-                                            <td>
-                                                @if(is_array($value))
-                                                    <pre>{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                @else
-                                                    {{ $value }}
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="alert alert-info">
-                            No additional payment details available.
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fas fa-user me-1"></i>
-                    Customer Information
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <tbody>
-                                <tr>
-                                    <th style="width: 30%">Name</th>
-                                    <td>{{ $payment->user->name }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Email</th>
-                                    <td>{{ $payment->user->email }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Phone</th>
-                                    <td>{{ $payment->user->phone ?? 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Address</th>
-                                    <td>{{ $payment->user->address ?? 'N/A' }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mb-4">
-        <a href="{{ route('admin.payments.index') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to Payments
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-4xl">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <h1 class="text-3xl font-bold text-slate-800">Payment Details</h1>
+        <a href="{{ route('admin.payments.index') }}" 
+           class="inline-flex items-center px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 19l-7-7 7-7"/><path d="M19 12H5"/></svg>
+            Back to List
         </a>
     </div>
+
+    <div class="overflow-hidden rounded-xl border border-slate-200 shadow-lg bg-white">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-slate-50 to-slate-100 p-6 pb-8 relative">
+            <h2 class="text-xl font-semibold text-slate-800">
+                Payment #{{ $payment->id }}
+            </h2>
+            <div class="absolute right-8 top-8">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white
+                    @if($payment->status == 'success') bg-emerald-500
+                    @elseif($payment->status == 'pending') bg-yellow-500
+                    @else bg-rose-500
+                    @endif">
+                    {{ ucfirst($payment->status) }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Customer Info -->
+        <div class="p-8 border-t border-slate-100">
+            <h3 class="text-lg font-semibold text-slate-800 mb-6 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Customer Information
+            </h3>
+            <div class="space-y-5">
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Name:</span>
+                    <span class="text-slate-800 font-medium">{{ $payment->user->name ?? 'N/A' }}</span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Email:</span>
+                    <span class="text-slate-800">{{ $payment->user->email ?? 'N/A' }}</span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Phone:</span>
+                    <span class="text-slate-800">{{ $payment->user->phone ?? 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Info -->
+        <div class="p-8 border-t border-slate-100 bg-slate-50">
+            <h3 class="text-lg font-semibold text-slate-800 mb-6 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 4h16v16H4z"/><path d="M9 4v16"/></svg>
+                Payment Information
+            </h3>
+            <div class="space-y-5">
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Amount:</span>
+                    <span class="text-emerald-600 font-bold">${{ number_format($payment->amount, 2) }}</span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Method:</span>
+                    <span class="text-slate-800">{{ $payment->payment_method }}</span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Transaction ID:</span>
+                    <span class="text-slate-800">{{ $payment->transaction_id ?? 'N/A' }}</span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Date:</span>
+                    <span class="text-slate-800">{{ $payment->payment_date ? $payment->payment_date->format('d M Y h:i A') : 'N/A' }}</span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Reference:</span>
+                    <span class="text-blue-600 hover:underline">
+                        @if($payment->order_id)
+                            <a href="{{ route('admin.orders.show', $payment->order_id) }}">Order #{{ $payment->order_id }}</a>
+                        @elseif($payment->appointment_id)
+                            <a href="{{ route('admin.appointments.show', $payment->appointment_id) }}">Appointment #{{ $payment->appointment_id }}</a>
+                        @else
+                            <span class="text-slate-500">None</span>
+                        @endif
+                    </span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Created At:</span>
+                    <span class="text-slate-600 text-sm">{{ $payment->created_at->format('d M Y h:i A') }}</span>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-slate-500 font-medium w-32">Last Updated:</span>
+                    <span class="text-slate-600 text-sm">{{ $payment->updated_at->format('d M Y h:i A') }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metadata (if any) -->
+        @if($payment->payment_details)
+        <div class="p-8 border-t border-slate-100">
+            <h3 class="text-lg font-semibold text-slate-800 mb-6 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 4h16v16H4z"/><path d="M9 4v16"/></svg>
+                Metadata
+            </h3>
+            <div class="space-y-4 text-sm">
+                @php
+                    function renderMetaValue($value) {
+                        if (is_array($value)) {
+                            $html = '<ul class="ml-4 list-disc space-y-1">';
+                            foreach ($value as $subKey => $subValue) {
+                                $html .= '<li><span class="text-slate-500">' . ucfirst(str_replace('_', ' ', $subKey)) . ':</span> ';
+                                $html .= is_array($subValue) ? renderMetaValue($subValue) : e($subValue);
+                                $html .= '</li>';
+                            }
+                            $html .= '</ul>';
+                            return $html;
+                        } else {
+                            return e($value);
+                        }
+                    }
+                @endphp
+
+                @foreach($payment->payment_details as $key => $value)
+                    <div>
+                        <span class="text-slate-500 font-medium">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
+                        <div class="text-slate-800 mt-1">
+                            {!! renderMetaValue($value) !!}
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+    </div>
 </div>
-@endsection 
+@endsection

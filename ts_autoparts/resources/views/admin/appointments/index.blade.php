@@ -10,7 +10,6 @@
             <div class="bg-gradient-to-r from-blue-800 to-blue-600 rounded-xl shadow-lg mb-6 p-6 text-white">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <h2 class="text-2xl font-bold">Appointments List</h2>
-                    {{-- Optional: Add new appointment button if needed --}}
                 </div>
             </div>
 
@@ -29,6 +28,57 @@
                     </div>
                 </div>
             @endif
+
+            <!-- Filters Section -->
+            <div class="bg-white rounded-xl shadow-lg mb-6 p-6">
+                <form action="{{ route('admin.appointments.index') }}" method="GET" class="space-y-4 md:space-y-0 md:grid md:grid-cols-4 md:gap-4">
+                    <!-- Search -->
+                    <div>
+                        <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                        <input type="text" name="search" id="search" placeholder="Search by customer or mechanic..." 
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value="{{ request('search') }}">
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select name="status" id="status" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Statuses</option>
+                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="confirmed" {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confirmed</option>
+                            <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                            <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                        </select>
+                    </div>
+
+                    <!-- Date From -->
+                    <div>
+                        <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                        <input type="date" name="date_from" id="date_from" 
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value="{{ request('date_from') }}">
+                    </div>
+
+                    <!-- Date To -->
+                    <div>
+                        <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                        <input type="date" name="date_to" id="date_to" 
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value="{{ request('date_to') }}">
+                    </div>
+
+                    <!-- Filter Buttons -->
+                    <div class="md:col-span-4 flex space-x-3 mt-4">
+                        <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
+                            Apply Filters
+                        </button>
+                        <a href="{{ route('admin.appointments.index') }}" class="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-300 transition font-medium">
+                            Reset Filters
+                        </a>
+                    </div>
+                </form>
+            </div>
 
             <!-- Appointments Table -->
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -55,10 +105,24 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         {{ ($appointments->currentPage() - 1) * $appointments->perPage() + $index + 1 }}
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <div class="text-gray-900 font-medium">{{ $appointment->user->name ?? 'N/A' }}</div>
-                                        <div class="text-gray-500 text-sm">{{ $appointment->user->email ?? '' }}</div>
-                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+    <div class="flex items-center">
+        @if($appointment->user && $appointment->user->profile_image)
+            <img src="{{ asset('storage/' . $appointment->user->profile_image) }}" alt="Profile" class="h-10 w-10 rounded-full object-cover mr-3">
+        @else
+            <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                <span class="text-gray-600 font-medium">
+                    {{ strtoupper(substr($appointment->user->name ?? 'NA', 0, 1)) }}
+                </span>
+            </div>
+        @endif
+        <div>
+            <div class="font-medium text-gray-900">{{ $appointment->user->name ?? 'N/A' }}</div>
+            <div class="text-gray-500 text-sm">{{ $appointment->user->email ?? '' }}</div>
+        </div>
+    </div>
+</td>
+
                                     <td class="px-6 py-4 text-gray-800">
                                         {{ $appointment->mechanic->name ?? 'N/A' }}
                                     </td>
@@ -70,7 +134,8 @@
                                             {{ \Carbon\Carbon::parse($appointment->appointment_date)->format('d M Y') }}
                                         </div>
                                         <div class="text-sm text-gray-500">
-                                            {{ \Carbon\Carbon::parse($appointment->appointment_date)->format('h:i A') }}
+                                        {{ \Carbon\Carbon::parse($appointment->appointment_date . ' ' . $appointment->time)->format('h:i A') }}
+
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-center">
@@ -104,7 +169,7 @@
 
             <!-- Pagination -->
             <div class="mt-6">
-                {{ $appointments->links() }}
+                {{ $appointments->appends(request()->query())->links() }}
             </div>
         </div>
     </div>

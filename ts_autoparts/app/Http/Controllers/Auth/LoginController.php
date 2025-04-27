@@ -15,25 +15,36 @@ class LoginController extends Controller
         $data = $request->validate([
             'email' => 'required|email',
             'password' => 'required|min:6',
-            'remember_me' => 'boolean',  // Optional remember me functionality
+            'remember_me' => 'boolean',
         ]);
-
+    
         // Find the user by email
         $user = User::where('email', $data['email'])->first();
-
-        // Check if user exists and password matches
-        if (!$user || !Hash::check($data['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+    
+        // Check if user exists
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found',
+                'error_type' => 'user_not_found'
+            ], 404);
         }
-
+    
+        // Check if password matches
+        if (!Hash::check($data['password'], $user->password)) {
+            return response()->json([
+                'message' => 'Invalid password',
+                'error_type' => 'invalid_password'
+            ], 401);
+        }
+    
         // Create the personal access token
         $token = $user->createToken('TS Autoparts')->plainTextToken;
-
-        // If 'remember_me' is true, extend token lifetime (e.g., 6 months)
+    
+        // If 'remember_me' is true, extend token lifetime
         if (isset($data['remember_me']) && $data['remember_me']) {
             $token = $user->createToken('TS Autoparts', ['*'], now()->addMonths(6))->plainTextToken;
         }
-
+    
         return response()->json([
             'message' => 'Login successful',
             'access_token' => $token,

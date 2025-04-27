@@ -11,12 +11,43 @@ use Illuminate\Support\Str;
 class ProductController extends Controller
 {
     // Display a list of all products (Admin Panel)
-    public function index()
-    {
-        // Fetch all products with categories
-        $products = Products::with('category')->get();
-        return view('admin.products.index', compact('products'));
+    public function index(Request $request)
+{
+    // Start with the base query
+    $productsQuery = Products::with('category');
+    
+    // Apply search filter if provided
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $productsQuery->where(function($query) use ($search) {
+            $query->where('name', 'like', "%$search%")
+                  ->orWhere('brand', 'like', "%$search%")
+                  ->orWhere('model', 'like', "%$search%")
+                  ->orWhere('description', 'like', "%$search%");
+        });
     }
+    
+    // Apply brand filter if provided
+    if ($request->filled('brand')) {
+        $productsQuery->where('brand', $request->input('brand'));
+    }
+    
+    // Apply category filter if provided
+    if ($request->filled('category')) {
+        $productsQuery->where('category_id', $request->input('category'));
+    }
+    
+    // Get all distinct brands for the filter dropdown
+    $brands = Products::select('brand')->distinct()->orderBy('brand')->pluck('brand');
+    
+    // Get all categories for the filter dropdown
+    $categories = Categories::orderBy('name')->get();
+    
+    // Paginate the results
+    $products = $productsQuery->paginate(15)->appends($request->query());
+    
+    return view('admin.products.index', compact('products', 'brands', 'categories'));
+}
 
     // API Version: Display a list of all products
     public function apiIndex()

@@ -1,0 +1,40 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::table('appointments', function (Blueprint $table) {
+            $table->boolean('is_first_booking')
+                  ->default(false)
+                  ->after('status')
+                  ->comment('Flag indicating if this was the user\'s first booking (for discounts)');
+            
+            $table->decimal('amount', 10, 2)
+                  ->after('is_first_booking')
+                  ->comment('The final amount charged for the appointment');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::table('appointments', function (Blueprint $table) {
+            $table->dropColumn('is_first_booking');
+            $table->dropColumn('amount');
+        });
+    }
+};

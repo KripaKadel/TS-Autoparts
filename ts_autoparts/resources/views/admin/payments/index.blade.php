@@ -21,20 +21,77 @@
                 </div>
             </div>
 
+            <!-- Search and Filter Section -->
+            <div class="bg-white rounded-xl shadow-lg mb-6 p-6">
+                <form action="{{ route('admin.payments.index') }}" method="GET">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <!-- Search Input -->
+                        <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                            <input type="text" name="search" id="search" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Customer, reference..."
+                                   value="{{ request('search') }}">
+                        </div>
+                        
+                        <!-- Payment Type Filter -->
+                        <div>
+                            <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                            <select name="type" id="type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Types</option>
+                                <option value="order" {{ request('type') == 'order' ? 'selected' : '' }}>Order</option>
+                                <option value="appointment" {{ request('type') == 'appointment' ? 'selected' : '' }}>Appointment</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Status Filter -->
+                        <div>
+                            <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select name="status" id="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Statuses</option>
+                                <option value="success" {{ request('status') == 'success' ? 'selected' : '' }}>Success</option>
+                                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="failed" {{ request('status') == 'failed' ? 'selected' : '' }}>Failed</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Date Range Filter -->
+                        <div>
+                            <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                   value="{{ request('start_date') }}">
+                        </div>
+                        <div>
+                            <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input type="date" name="end_date" id="end_date" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                   value="{{ request('end_date') }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-start space-x-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            Apply Filters
+                        </button>
+                        <a href="{{ route('admin.payments.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg">
+                            Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
+
             <!-- Payments Table -->
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                 <!-- Table Header -->
-                <div class="bg-gray-50 px-6 py-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="flex justify-between items-center bg-gray-50 px-6 py-4 border-b">
                     <h3 class="text-lg font-medium text-gray-900">All Payments</h3>
-                    <div class="mt-2 md:mt-0 w-full md:w-auto">
-                        <form action="{{ route('admin.payments.index') }}" method="GET" class="flex space-x-2">
-                            <input type="text" name="search" placeholder="Search payments..." 
-                                   class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
-                                   value="{{ request('search') }}">
-                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                                Search
-                            </button>
-                        </form>
+                    <div class="text-sm text-gray-500">
+                        {{ $payments->total() }} payments found
+                        @if(request()->has('start_date') || request()->has('end_date'))
+                            ({{ request('start_date') ? 'From '.request('start_date') : '' }} 
+                            {{ request('end_date') ? 'To '.request('end_date') : '' }})
+                        @endif
                     </div>
                 </div>
 
@@ -42,7 +99,7 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
@@ -54,11 +111,10 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
+                        @php $count = ($payments->currentPage() - 1) * $payments->perPage() + 1; @endphp
                             @foreach($payments as $payment)
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-gray-900">#{{ $payment->id }}</div>
-                                    </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-gray-900">{{ $count++ }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             @if($payment->user->profile_image)
@@ -133,9 +189,16 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
+                <!-- Pagination Section -->
                 <div class="bg-gray-50 px-6 py-4 border-t">
-                    {{ $payments->appends(request()->query())->links() }}
+                    <div class="flex flex-col md:flex-row items-center justify-between">
+                        <div class="text-sm text-gray-500 mb-4 md:mb-0">
+                            Showing {{ $payments->firstItem() }} to {{ $payments->lastItem() }} of {{ $payments->total() }} results
+                        </div>
+                        <div class="flex space-x-2">
+                            {{ $payments->appends(request()->query())->links() }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

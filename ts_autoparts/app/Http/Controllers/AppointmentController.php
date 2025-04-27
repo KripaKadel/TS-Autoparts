@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use App\Notifications\AppointmentNotification;
+use Carbon\Carbon;
 
 class AppointmentController extends Controller
 {
@@ -40,45 +41,46 @@ class AppointmentController extends Controller
      * Store a new appointment
      */
     public function store(Request $request)
-{
-    $validatedData = $request->validate([
-        'user_id' => 'required|exists:users,id',
-        'mechanic_id' => 'required|exists:users,id',
-        'service_description' => 'required|string',
-        'appointment_date' => 'required|date',
-        'time' => 'required|date_format:H:i',
-        'status' => 'required|string',
-    ]);
-
-    $appointmentDateTime = $validatedData['appointment_date'] . ' ' . $validatedData['time'];
-
-    $existingAppointment = Appointment::where('appointment_date', $appointmentDateTime)
-        ->where('mechanic_id', $validatedData['mechanic_id'])
-        ->first();
-
-    if ($existingAppointment) {
+    {
+        $validatedData = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'mechanic_id' => 'required|exists:users,id',
+            'service_description' => 'required|string',
+            'appointment_date' => 'required|date',
+            'time' => 'required|date_format:H:i',
+            'status' => 'required|string',
+        ]);
+    
+        $appointmentDateTime = $validatedData['appointment_date'] . ' ' . $validatedData['time'];
+    
+        $existingAppointment = Appointment::where('appointment_date', $appointmentDateTime)
+            ->where('mechanic_id', $validatedData['mechanic_id'])
+            ->first();
+    
+        if ($existingAppointment) {
+            return response()->json([
+                'message' => 'The selected time slot is already taken. Please choose another time.',
+            ], 400);
+        }
+    
+        $appointment = Appointment::create($validatedData);
+    
+        // Notify the user
+        $user = User::find($validatedData['user_id']);
+        $user->notify(new AppointmentNotification($appointment, 'booked'));
+    
+        // Notify the admin(s)
+        $admins = User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new AppointmentNotification($appointment, 'booked'));
+        }
+    
         return response()->json([
-            'message' => 'The selected time slot is already taken. Please choose another time.',
-        ], 400);
+            'message' => 'Appointment created successfully',
+            'data' => $appointment,
+        ], 201);
     }
-
-    $appointment = Appointment::create($validatedData);
-
-    // Notify the user
-    $user = User::find($validatedData['user_id']);
-    $user->notify(new AppointmentNotification($appointment, 'booked'));
-
-    // Notify the admin(s)
-    $admins = User::where('role', 'admin')->get();
-    foreach ($admins as $admin) {
-        $admin->notify(new AppointmentNotification($appointment, 'booked'));
-    }
-
-    return response()->json([
-        'message' => 'Appointment created successfully',
-        'data' => $appointment,
-    ], 201);
-}
+    
 
     /**
      * Get appointments for the logged-in user (for mobile app)
@@ -118,16 +120,16 @@ class AppointmentController extends Controller
             ], 403);
         }
     
-        $appointment->status = 'Canceled';
+        $appointment->status = 'cancelled';
         $appointment->save();
     
         // Notify the user
-        $appointment->user->notify(new AppointmentNotification($appointment, 'canceled'));
+        $appointment->user->notify(new AppointmentNotification($appointment, 'cancelled'));
     
         // Notify the admin(s)
         $admins = User::where('role', 'admin')->get();
         foreach ($admins as $admin) {
-            $admin->notify(new AppointmentNotification($appointment, 'canceled'));
+            $admin->notify(new AppointmentNotification($appointment, 'cancelled'));
         }
     
         return response()->json([
@@ -159,6 +161,24 @@ class AppointmentController extends Controller
             'appointment' => $appointment->load('user', 'mechanic')
         ]);
     }
+
+    public function checkAvailability(Request $request)
+{
+    $validated = $request->validate([
+        'mechanic_id' => 'required|exists:users,id',
+        'appointment_date' => 'required|date',
+        'time' => 'required|date_format:H:i',
+    ]);
+
+    $existingAppointment = Appointment::where('appointment_date', $validated['appointment_date'])
+        ->where('time', $validated['time'])
+        ->where('mechanic_id', $validated['mechanic_id'])
+        ->first();
+
+    return response()->json([
+        'available' => $existingAppointment === null,
+    ]);
+}
 
     /**
      * Get review status for an appointment
@@ -192,14 +212,40 @@ class AppointmentController extends Controller
     /**
      * Admin - View paginated list of all appointments
      */
-    public function index()
+    public function index(Request $request)
     {
-        $appointments = Appointment::with(['user', 'mechanic'])
-            ->latest()
-            ->paginate(10);
-
+        $query = Appointment::with(['user', 'mechanic']);
+    
+        // Search by customer or mechanic name/email
+        if ($search = $request->input('search')) {
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })->orWhereHas('mechanic', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+    
+        // Filter by status
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+    
+        // Filter by date range
+        if ($dateFrom = $request->input('date_from')) {
+            $query->whereDate('appointment_date', '>=', $dateFrom);
+        }
+    
+        if ($dateTo = $request->input('date_to')) {
+            $query->whereDate('appointment_date', '<=', $dateTo);
+        }
+    
+        $appointments = $query->latest()->paginate(10);
+    
         return view('admin.appointments.index', compact('appointments'));
     }
+    
 
     /**
      * Admin - Show appointment details

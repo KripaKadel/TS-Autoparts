@@ -30,9 +30,10 @@
                         <div>
                             <label for="date_range" class="block text-sm font-medium text-gray-700">Date Range</label>
                             <div class="mt-1 flex space-x-4">
-                                <input type="date" id="start_date" name="start_date" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <input type="date" id="end_date" name="end_date" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <input type="date" id="start_date" name="start_date" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
+                                <input type="date" id="end_date" name="end_date" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                             </div>
+                            <div class="text-red-500 text-sm mt-2" id="dateError"></div> <!-- Error Message -->
                         </div>
 
                         <!-- Format -->
@@ -43,6 +44,11 @@
                                 <option value="csv">CSV</option>
                             </select>
                         </div>
+                    </div>
+
+                    <!-- Chart Preview -->
+                    <div id="chartPreview" class="mt-8">
+                        <canvas id="chartCanvas"></canvas> <!-- Chart.js Canvas -->
                     </div>
 
                     <div class="flex justify-end">
@@ -61,13 +67,60 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js CDN -->
+
 <script>
 document.getElementById('reportForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+
+    // Validate Date Range
+    if (!startDate || !endDate) {
+        document.getElementById('dateError').innerText = "Please select a valid date range.";
+        return;
+    }
+
+    // Remove previous error message if any
+    document.getElementById('dateError').innerText = '';
+
     const formData = new FormData(this);
     const queryString = new URLSearchParams(formData).toString();
-    
+
+    // Fetch chart data for preview before generating the report
+    fetch('{{ route("admin.reports.chartData") }}?' + queryString)
+        .then(response => response.json())
+        .then(data => {
+            // Update chart with new data
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,  // Example: ['Jan', 'Feb', 'Mar', ...]
+                    datasets: [{
+                        label: 'Amount',
+                        data: data.values,  // Example: [10, 20, 30, ...]
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching chart data:', error);
+            alert('Failed to fetch chart data.');
+        });
+
     // Create a hidden form for proper file download
     const form = document.createElement('form');
     form.method = 'POST';
@@ -94,4 +147,4 @@ document.getElementById('reportForm').addEventListener('submit', function(e) {
     document.body.removeChild(form);
 });
 </script>
-@endsection 
+@endsection

@@ -36,17 +36,68 @@
                 </div>
             @endif
 
+            <!-- Search and Filter Section -->
+            <div class="bg-white rounded-xl shadow-lg mb-6 p-6">
+                <form method="GET" action="{{ route('admin.products.index') }}">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Search Input -->
+                        <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                            <input type="text" name="search" id="search" value="{{ request('search') }}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Search products...">
+                        </div>
+                        
+                        <!-- Brand Filter -->
+                        <div>
+                            <label for="brand" class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                            <select name="brand" id="brand" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Brands</option>
+                                @foreach($brands as $brand)
+                                    <option value="{{ $brand }}" {{ request('brand') == $brand ? 'selected' : '' }}>{{ $brand }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <!-- Category Filter -->
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                            <select name="category" id="category" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">All Categories</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" {{ request('category') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex items-end space-x-2">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                Filter
+                            </button>
+                            <a href="{{ route('admin.products.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg">
+                                Reset
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
             <!-- Products Table -->
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                 <!-- Table Header -->
-                <div class="bg-gray-50 px-6 py-4 border-b">
+                <div class="flex justify-between items-center bg-gray-50 px-6 py-4 border-b">
                     <h3 class="text-lg font-medium text-gray-900">All Products</h3>
+                    <div class="text-sm text-gray-500">
+                        {{ $products->total() }} products found
+                    </div>
                 </div>
                 
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
@@ -59,8 +110,10 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
+                            @php $count = ($products->currentPage() - 1) * $products->perPage() + 1; @endphp
                             @foreach($products as $product)
                                 <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-gray-900">{{ $count++ }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-gray-900">{{ $product->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ $product->brand }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-gray-600">
@@ -108,6 +161,13 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination -->
+                @if($products->hasPages())
+                    <div class="bg-gray-50 px-6 py-4 border-t">
+                        {{ $products->appends(request()->query())->links() }}
+                    </div>
+                @endif
             </div>
 
         </div>

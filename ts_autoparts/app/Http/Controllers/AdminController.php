@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Products;
 use App\Models\Payments;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -43,71 +44,82 @@ class AdminController extends Controller
     // Admin dashboard
     public function dashboard()
     {
-        // Fetch data for dashboard stats
+        $currentMonthRevenue = Payments::whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->where('status', 'success')
+            ->sum('amount');
+
+        $lastMonthRevenue = Payments::whereMonth('created_at', now()->subMonth()->month)
+            ->whereYear('created_at', now()->subMonth()->year)
+            ->where('status', 'success')
+            ->sum('amount');
+
+        $revenueChange = $lastMonthRevenue > 0 
+            ? (($currentMonthRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100 
+            : 0;
+
         $totalOrders = Order::count();
         $totalAppointments = Appointment::count();
         $totalProducts = Products::count();
         $totalUsers = User::count();
-        
-        // Payment statistics
-        $totalPayments = Payments::count();
-        $totalPaymentAmount = Payments::where('status', 'success')->sum('amount');
-        
-        // Calculate revenue for current month
-        $currentMonthRevenue = Payments::where('status', 'success')
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('amount');
-            
-        // Calculate revenue for previous month
-        $previousMonthRevenue = Payments::where('status', 'success')
-            ->whereMonth('created_at', now()->subMonth()->month)
-            ->whereYear('created_at', now()->subMonth()->year)
-            ->sum('amount');
-            
-        // Calculate percentage change
-        $revenueChange = $previousMonthRevenue > 0 
-            ? (($currentMonthRevenue - $previousMonthRevenue) / $previousMonthRevenue) * 100 
-            : 0;
-            
-        // Fetch recent orders with user and order items
-        $recentOrders = Order::with(['user', 'orderItems'])
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
-            
-        $recentPayments = Payments::with(['user', 'order', 'appointment'])
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
-        
-        // Payment by type
-        $orderPayments = Payments::whereNotNull('order_id')->count();
-        $appointmentPayments = Payments::whereNotNull('appointment_id')->count();
-        
-        // Payment by status
-        $successPayments = Payments::where('status', 'success')->count();
-        $pendingPayments = Payments::where('status', 'pending')->count();
-        $failedPayments = Payments::where('status', 'failed')->count();
 
-        // Pass the data to the view
+        $recentOrders = Order::with('user')
+            ->latest()
+            ->take(5)
+            ->get();
+
         return view('admin.dashboard', compact(
-            'totalOrders', 
-            'totalAppointments', 
-            'totalProducts', 
-            'totalUsers',
-            'totalPayments',
-            'totalPaymentAmount',
-            'recentPayments',
-            'orderPayments',
-            'appointmentPayments',
-            'successPayments',
-            'pendingPayments',
-            'failedPayments',
             'currentMonthRevenue',
             'revenueChange',
+            'totalOrders',
+            'totalAppointments',
+            'totalProducts',
+            'totalUsers',
             'recentOrders'
         ));
+    }
+
+    public function filter(Request $request)
+    {
+        Log::info('Filter method called', ['request' => $request->all()]);
+        
+        try {
+            $query = Order::with('user');
+
+            // Search filter
+            if ($request->search) {
+                $query->where(function($q) use ($request) {
+                    $q->where('id', 'like', "%{$request->search}%")
+                      ->orWhereHas('user', function($q) use ($request) {
+                          $q->where('name', 'like', "%{$request->search}%");
+                      });
+                });
+            }
+
+            // Date filter
+            if ($request->date) {
+                $query->whereDate('created_at', $request->date);
+            }
+
+            // Status filter
+            if ($request->status) {
+                $query->where('status', $request->status);
+            }
+
+            $orders = $query->latest()->take(5)->get();
+            Log::info('Filter results', ['count' => $orders->count()]);
+
+            return response()->json([
+                'success' => true,
+                'orders' => $orders
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Filter error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while filtering orders'
+            ], 500);
+        }
     }
 
     // Admin logout

@@ -33,6 +33,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::post('/dashboard/filter', [AdminController::class, 'filter'])->name('dashboard.filter');
 
     // Appointments Management
     Route::prefix('appointments')->name('appointments.')->controller(AppointmentController::class)->group(function () {
@@ -41,6 +42,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/{appointment}/status', 'updateStatus')->name('status.update');
         Route::get('/export/csv', 'exportToCSV')->name('export.csv');
         Route::get('/calendar', 'calendar')->name('calendar');
+        Route::post('/check-availability', 'checkAvailability')->name('check-availability');
     });
 
     // Orders Management
@@ -48,6 +50,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/', 'index')->name('index');
         Route::get('/{order}', 'show')->name('show');
         Route::patch('/{id}/status', 'updateStatus')->name('updateStatus'); 
+        Route::get('/export', 'export')->name('export'); 
     });
 
     // Payments Management
@@ -97,6 +100,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::prefix('reports')->name('reports.')->controller(ReportsController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::post('/generate', 'generateReport')->name('generate');
+        Route::get('/chart-data', 'getChartData')->name('chartData'); 
     });
 
     // System Settings
@@ -120,4 +124,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
             return 'Test email sent!';
         })->name('test.email');
     }
+});
+
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::post('/admin/dashboard/filter', [AdminController::class, 'filter'])->name('admin.dashboard.filter');
 });

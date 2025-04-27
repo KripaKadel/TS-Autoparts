@@ -20,7 +20,7 @@ class CreateAppointmentsTable extends Migration
             $table->text('service_description');
             $table->date('appointment_date');
             $table->time('time');
-            $table->enum('status', ['pending', 'confirmed', 'completed', 'canceled'])->default('pending');
+            $table->enum('status', ['pending', 'confirmed', 'completed', 'cancelled'])->default('pending');
             $table->timestamps();
 
             // Foreign key constraints

@@ -56,7 +56,7 @@ class PaymentController extends Controller
             ]);
 
             // Update order status
-            $order->update(['status' => 'paid']);
+            $order->update(['status' => 'pending']);
 
             try {
                 // Load the user relationship before notifying
@@ -138,7 +138,7 @@ class PaymentController extends Controller
             ]);
 
             // Update appointment status
-            $appointment->update(['status' => 'paid']);
+            $appointment->update(['status' => 'pending']);
 
             try {
                 // Load the user relationship before notifying
@@ -239,14 +239,49 @@ class PaymentController extends Controller
     /**
      * Admin: Get all payments
      */
-    public function index()
-    {
-        $payments = Payments::with(['user', 'order', 'appointment'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        return view('admin.payments.index', compact('payments'));
+    public function index(Request $request)
+{
+    $query = Payments::with('user');
+    
+    // Search filter
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->where(function($q) use ($search) {
+            $q->whereHas('user', function($userQuery) use ($search) {
+                $userQuery->where('name', 'like', "%$search%")
+                          ->orWhere('email', 'like', "%$search%");
+            })
+            ->orWhere('order_id', 'like', "%$search%")
+            ->orWhere('appointment_id', 'like', "%$search%");
+        });
     }
+    
+    // Payment type filter
+    if ($request->filled('type')) {
+        if ($request->type == 'order') {
+            $query->whereNotNull('order_id');
+        } elseif ($request->type == 'appointment') {
+            $query->whereNotNull('appointment_id');
+        }
+    }
+    
+    // Status filter
+    if ($request->filled('status')) {
+        $query->where('status', $request->input('status'));
+    }
+    
+    // Date range filter
+    if ($request->filled('start_date')) {
+        $query->whereDate('payment_date', '>=', $request->input('start_date'));
+    }
+    if ($request->filled('end_date')) {
+        $query->whereDate('payment_date', '<=', $request->input('end_date'));
+    }
+    
+    $payments = $query->latest('payment_date')->paginate(10)->appends($request->query());
+    
+    return view('admin.payments.index', compact('payments'));
+}
 
     /**
      * Admin: Show payment details

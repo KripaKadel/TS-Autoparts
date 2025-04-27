@@ -117,6 +117,17 @@ Mark all as read
                         <div class="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold mr-2">A</div>
                         <span class="font-medium">Admin User</span>
                     </div>
+ <!-- Logout Button -->
+<form method="POST" action="{{ route('admin.logout') }}">
+    @csrf
+    <button type="submit" class="text-white relative group">
+        <i class="fas fa-sign-out-alt text-xl mr-3"></i>
+        <span class="absolute -top-7 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+            Logout
+        </span>
+    </button>
+</form>
+
                 </div>
             </div>
         </div>
@@ -146,12 +157,10 @@ Mark all as read
                                 <h3 class="text-3xl font-bold text-gray-900 mt-1">Rs {{ number_format($currentMonthRevenue, 2) }}</h3>
                             </div>
                             <div class="rounded-full p-3 bg-green-50">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <path d="M12 6v12"/>
-                                    <path d="M15 9.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-                                </svg>
-                            </div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
                         </div>
                         <div class="mt-4 flex items-center text-sm">
                             <span class="{{ $revenueChange >= 0 ? 'text-green-500' : 'text-red-500' }} font-medium flex items-center">
@@ -375,17 +384,19 @@ Mark all as read
                                     <p class="text-xs text-gray-500">Create a new user account</p>
                                 </div>
                             </a>
-                            <div class="flex items-center space-x-4">
-                                <a href="{{ route('admin.reports.index') }}" class="flex items-center space-x-2 text-gray-600 hover:text-indigo-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <a href="{{ route('admin.reports.index') }}" class="flex items-center p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                                <div class="rounded-full p-2 bg-blue-50 mr-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                         <polyline points="7 10 12 15 17 10"/>
                                         <line x1="12" y1="15" x2="12" y2="3"/>
                                     </svg>
-                                    <span>Generate Report</span>
-                                </a>
-                            </div>
-                        
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Generate Report</p>
+                                    <p class="text-xs text-gray-500">Generate business reports</p>
+                                </div>
+                            </a>
                         </div>
                     </div>
                 </div>

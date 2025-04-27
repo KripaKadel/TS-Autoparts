@@ -11,16 +11,21 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
-        // First, modify the existing status column to be VARCHAR to prevent data loss
-        DB::statement('ALTER TABLE appointments MODIFY status VARCHAR(255)');
+{
+    // Temporarily convert to VARCHAR to allow any status for cleanup
+    DB::statement('ALTER TABLE appointments MODIFY status VARCHAR(255)');
 
-        // Then update any existing status values to match our new enum values
-        DB::table('appointments')->where('status', '')->update(['status' => 'pending']);
-        
-        // Now modify the column to be an ENUM
-        DB::statement("ALTER TABLE appointments MODIFY status ENUM('pending', 'confirmed', 'paid', 'completed', 'cancelled') NOT NULL DEFAULT 'pending'");
-    }
+    // Fix empty strings
+    DB::table('appointments')->where('status', '')->update(['status' => 'pending']);
+
+    // Fix any invalid status values (like 'paid') by setting to a valid one
+    DB::table('appointments')
+        ->whereNotIn('status', ['pending', 'confirmed', 'completed', 'cancelled'])
+        ->update(['status' => 'pending']); // or 'completed', depending on your logic
+
+    // Now enforce ENUM type again
+    DB::statement("ALTER TABLE appointments MODIFY status ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL DEFAULT 'pending'");
+}
 
     /**
      * Reverse the migrations.

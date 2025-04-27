@@ -10,7 +10,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <h2 class="text-2xl font-bold">Manage Orders</h2>
                     <div class="mt-4 md:mt-0 flex space-x-3">
-                        <a href="#" 
+                        <a href="{{ route('admin.orders.export') }}" 
                            class="bg-white text-blue-700 hover:bg-blue-50 px-5 py-2 rounded-lg shadow font-medium transition-all flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -37,21 +37,64 @@
                 </div>
             @endif
 
+            <!-- Filters Section -->
+            <div class="bg-white rounded-xl shadow-lg mb-6 p-6">
+                <form action="{{ route('admin.orders.index') }}" method="GET" class="space-y-4 md:space-y-0 md:grid md:grid-cols-4 md:gap-4">
+                    <!-- Search -->
+                    <div>
+                        <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                        <input type="text" name="search" id="search" placeholder="Search orders..." 
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               value="{{ request('search') }}">
+                    </div>
+                    
+                    <!-- Status Filter -->
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select name="status" id="status" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Statuses</option>
+                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="processing" {{ request('status') == 'processing' ? 'selected' : '' }}>Processing</option>
+                            <option value="shipped" {{ request('status') == 'shipped' ? 'selected' : '' }}>Shipped</option>
+                            <option value="delivered" {{ request('status') == 'delivered' ? 'selected' : '' }}>Delivered</option>
+                            <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                            <option value="canceled" {{ request('status') == 'canceled' ? 'selected' : '' }}>Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Date From -->
+                    <div>
+                        <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                        <input type="date" name="date_from" id="date_from" 
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               value="{{ request('date_from') }}">
+                    </div>
+                    
+                    <!-- Date To -->
+                    <div>
+                        <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                        <input type="date" name="date_to" id="date_to" 
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               value="{{ request('date_to') }}">
+                    </div>
+                    
+                    <!-- Filter Buttons -->
+                    <div class="md:col-span-4 flex space-x-3">
+                        <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
+                            Apply Filters
+                        </button>
+                        <a href="{{ route('admin.orders.index') }}" class="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-300 transition font-medium">
+                            Reset Filters
+                        </a>
+                    </div>
+                </form>
+            </div>
+
             <!-- Orders Table -->
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                 <!-- Table Header -->
-                <div class="bg-gray-50 px-6 py-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="bg-gray-50 px-6 py-4 border-b">
                     <h3 class="text-lg font-medium text-gray-900">All Orders</h3>
-                    <div class="mt-2 md:mt-0 w-full md:w-auto">
-                        <form action="{{ route('admin.orders.index') }}" method="GET" class="flex space-x-2">
-                            <input type="text" name="search" placeholder="Search orders..." 
-                                   class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
-                                   value="{{ request('search') }}">
-                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                                Search
-                            </button>
-                        </form>
-                    </div>
                 </div>
 
                 <div class="overflow-x-auto">
@@ -63,6 +106,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Address</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -97,6 +141,11 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="font-medium text-gray-900">Rs.{{ number_format($order->total_amount, 2) }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-normal max-w-xs">
+                                        <div class="text-gray-900 text-sm">
+                                            {{ $order->address ?? 'N/A' }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($order->status == 'completed')

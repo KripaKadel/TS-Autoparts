@@ -11,12 +11,31 @@ use Illuminate\Support\Str;
 class UserController extends Controller
 {
     // Display a list of all users (Admin Panel)
-    public function index()
-    {
-        $users = User::all();
-        return view('admin.users.index', compact('users'));
+    public function index(Request $request)
+{
+    // Start building the query
+    $query = User::query();
+    
+    // Apply search filter if provided
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->where(function($q) use ($search) {
+            $q->where('name', 'like', "%$search%")
+              ->orWhere('email', 'like', "%$search%")
+              ->orWhere('phone_number', 'like', "%$search%");
+        });
     }
-
+    
+    // Apply role filter if provided
+    if ($request->filled('role')) {
+        $query->where('role', $request->input('role'));
+    }
+    
+    // Paginate the results with filter parameters
+    $users = $query->paginate(10)->appends($request->query());
+    
+    return view('admin.users.index', compact('users'));
+}
     // Show a specific user
     public function show($id)
     {

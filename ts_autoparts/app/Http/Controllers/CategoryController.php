@@ -8,12 +8,17 @@ use Illuminate\Http\Request;
 class CategoryController extends Controller
 {
     // Show the list of categories
-    public function index()
+    public function index(Request $request)
     {
-        // Fetch all categories from the database
-        $categories = Categories::all();
-
-        // Return a view and pass the categories to it
+        $search = $request->input('search');
+        
+        $categories = Categories::when($search, function ($query, $search) {
+            return $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+        })
+        ->latest()
+        ->paginate(10);
+        
         return view('admin.categories.index', compact('categories'));
     }
 

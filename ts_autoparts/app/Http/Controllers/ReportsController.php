@@ -17,6 +17,74 @@ class ReportsController extends Controller
         return view('admin.reports.index');
     }
 
+    public function getChartData(Request $request)
+    {
+        $request->validate([
+            'report_type' => 'required|in:sales,orders,appointments,products',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date);
+
+        $labels = [];
+        $values = [];
+
+        switch ($request->report_type) {
+            case 'sales':
+                $data = Payments::whereBetween('created_at', [$startDate, $endDate])
+                    ->where('status', 'success')
+                    ->get();
+                $labels = $data->groupBy(function ($item) {
+                    return $item->created_at->format('Y-m-d');
+                });
+                $values = $labels->map(function ($day) {
+                    return $day->sum('amount');
+                });
+                break;
+            case 'orders':
+                $data = Order::whereBetween('created_at', [$startDate, $endDate])
+                    ->with(['user'])
+                    ->get();
+                $labels = $data->groupBy(function ($item) {
+                    return $item->created_at->format('Y-m-d');
+                });
+                $values = $labels->map(function ($day) {
+                    return $day->sum('total_amount');
+                });
+                break;
+            case 'appointments':
+                $data = Appointment::whereBetween('created_at', [$startDate, $endDate])
+                    ->with(['user'])
+                    ->get();
+                $labels = $data->groupBy(function ($item) {
+                    return $item->created_at->format('Y-m-d');
+                });
+                $values = $labels->map(function ($day) {
+                    return $day->count();
+                });
+                break;
+            case 'products':
+                $data = Products::whereBetween('created_at', [$startDate, $endDate])
+                    ->get();
+                $labels = $data->groupBy(function ($item) {
+                    return $item->created_at->format('Y-m-d');
+                });
+                $values = $labels->map(function ($day) {
+                    return $day->count();
+                });
+                break;
+            default:
+                return response()->json(['error' => 'Invalid report type'], 400);
+        }
+
+        return response()->json([
+            'labels' => $labels->keys(),
+            'values' => $values->values(),
+        ]);
+    }
+
     public function generateReport(Request $request)
     {
         $request->validate([
@@ -132,5 +200,6 @@ class ReportsController extends Controller
 
             return response()->stream($callback, 200, $headers);
         }
+        
     }
-} 
+}
