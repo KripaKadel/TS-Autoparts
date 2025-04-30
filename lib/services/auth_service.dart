@@ -15,7 +15,6 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['openid', 'email', 'profile'],
     serverClientId: '30762665291-87vvgm2r0l6ssselbh16u090k0oetu60.apps.googleusercontent.com',
-     signInOption: SignInOption.standard,
   );
 
   // Create a reusable HTTP client with SSL verification
@@ -44,54 +43,48 @@ class AuthService {
   // ==================== GOOGLE AUTH METHODS ====================
 
   Future<User?> loginWithGoogle() async {
-  try {
-    debugPrint('Starting Google Sign-In...');
-    
-    // First, sign out any existing session to force account selection
-    await _googleSignIn.signOut();
-    
-    // Then sign in with account selection
-    final googleAccount = await _googleSignIn.signIn();
-    
-    if (googleAccount == null) {
-      throw Exception('User cancelled Google Sign-In');
+    try {
+      debugPrint('Starting Google Sign-In...');
+      final googleAccount = await _googleSignIn.signIn();
+      if (googleAccount == null) {
+        throw Exception('User cancelled Google Sign-In');
+      }
+
+      final googleAuth = await googleAccount.authentication;
+      if (googleAuth.idToken == null) {
+        throw Exception('No ID token received from Google');
+      }
+
+      debugPrint('Google authentication successful for ${googleAccount.email}');
+
+      final client = await _httpClient;
+      final response = await client.post(
+        Uri.parse('$baseUrl/api/auth/google/mobile'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id_token': googleAuth.idToken,
+          'email': googleAccount.email,
+          'name': googleAccount.displayName,
+          'google_id': googleAccount.id,
+          'photo_url': googleAccount.photoUrl,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        final user = User.fromJson(responseData['user']);
+        final token = responseData['token'];
+        
+        await _saveUserData(user, token);
+        return user;
+      } else {
+        throw Exception('Failed to authenticate with backend: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Google login error: $e');
+      rethrow;
     }
-
-    final googleAuth = await googleAccount.authentication;
-    if (googleAuth.idToken == null) {
-      throw Exception('No ID token received from Google');
-    }
-
-    debugPrint('Google authentication successful for ${googleAccount.email}');
-
-    final client = await _httpClient;
-    final response = await client.post(
-      Uri.parse('$baseUrl/api/auth/google/mobile'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'id_token': googleAuth.idToken,
-        'email': googleAccount.email,
-        'name': googleAccount.displayName,
-        'google_id': googleAccount.id,
-        'photo_url': googleAccount.photoUrl,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      final user = User.fromJson(responseData['user']);
-      final token = responseData['token'];
-      
-      await _saveUserData(user, token);
-      return user;
-    } else {
-      throw Exception('Failed to authenticate with backend: ${response.body}');
-    }
-  } catch (e) {
-    debugPrint('Google login error: $e');
-    rethrow;
   }
-}
 
   Future<void> googleSignOut() async {
     try {
@@ -203,42 +196,49 @@ class AuthService {
   }
 
    // Login a user
-  Future<User?> loginUser(String email, String password) async {
-  try {
-    final client = await _httpClient;
-    final response = await client.post(
-      Uri.parse('$baseUrl/api/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
+  Future<User> loginUser(String email, String password) async {
+  final client = await _httpClient;
+  final response = await client.post(
+    Uri.parse('$baseUrl/api/login'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'email': email, 'password': password}),
+  );
 
-    debugPrint('Login response: ${response.statusCode} - ${response.body}');
+  // First check if the response is JSON
+  final contentType = response.headers['content-type'];
+  if (contentType == null || !contentType.toLowerCase().contains('application/json')) {
+    throw Exception('Server returned unexpected response: ${response.statusCode}');
+  }
 
-    if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      final userJson = responseBody['user'];
-      final token = responseBody['access_token'];
-      final role = userJson['role'] ?? 'customer';
+  final responseBody = json.decode(response.body);
 
-      final user = User.fromJson({
-        ...userJson,
-        'access_token': token,
-      });
+  if (response.statusCode == 200) {
+    final userJson = responseBody['user'];
+    final token = responseBody['access_token'];
+    final role = userJson['role'] ?? 'customer';
 
-      await _saveUserData(user, token);
-      await _storage.write(key: 'role', value: role);
+    final user = User.fromJson({
+      ...userJson,
+      'access_token': token,
+    });
 
-      return user;
-    } else {
-      final errorResponse = json.decode(response.body);
-      final errorType = errorResponse['error_type'] ?? 'unknown_error';
-      throw Exception(errorType);
-    }
-  } catch (e) {
-    debugPrint('Login exception: $e');
-    rethrow;
+    await _saveUserData(user, token);
+    await _storage.write(key: 'role', value: role);
+
+    return user;
+  } else if (response.statusCode == 404) {
+    throw Exception('user_not_found');
+  } else if (response.statusCode == 401) {
+    throw Exception('invalid_password');
+  } else {
+    // Handle server errors with proper messages
+    final errorMsg = responseBody['message'] ?? 
+                   responseBody['error'] ?? 
+                   'Login failed (${response.statusCode})';
+    throw Exception(errorMsg);
   }
 }
+
 
   Future<User?> getAuthenticatedUser() async {
     try {
@@ -299,40 +299,38 @@ class AuthService {
   }
 
   Future<bool> forgotPassword(String email) async {
-    try {
-      final response = await _makeHttpPost(
-        Uri.parse('$baseUrl/api/forgot-password'),
-        body: jsonEncode({'email': email}),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      debugPrint('Forgot password error: $e');
-      return false;
-    }
-  }
+  final client = await _httpClient;
+  final response = await client.post(
+    Uri.parse('$baseUrl/api/forgot-password'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'email': email}),
+  );
+  if (response.statusCode == 200) return true;
+  throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to send OTP');
+}
 
-  Future<bool> resetPassword({
-    required String email,
-    required String token,
-    required String password,
-    required String passwordConfirmation,
-  }) async {
-    try {
-      final response = await _makeHttpPost(
-        Uri.parse('$baseUrl/api/reset-password'),
-        body: jsonEncode({
-          'email': email,
-          'token': token,
-          'password': password,
-          'password_confirmation': passwordConfirmation,
-        }),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      debugPrint('Reset password error: $e');
-      return false;
-    }
-  }
+Future<bool> resetPasswordWithOtp({
+  required String email,
+  required String otp,
+  required String password,
+  required String passwordConfirmation,
+}) async {
+  final client = await _httpClient;
+  final response = await client.post(
+    Uri.parse('$baseUrl/api/reset-password'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'otp': otp,
+      'password': password,
+      'password_confirmation': passwordConfirmation,
+    }),
+  );
+  if (response.statusCode == 200) return true;
+  throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to reset password');
+}
+
+  
 
   // ==================== PRIVATE HELPERS ====================
 

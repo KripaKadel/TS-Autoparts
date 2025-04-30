@@ -38,65 +38,85 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   Future<void> _verifyOtp() async {
-    final otp = _otpControllers.map((c) => c.text).join();
-    if (otp.length != 6) {
-      setState(() {
-        _errorMessage = 'Please enter a 6-digit OTP';
-      });
-      return;
-    }
+  final otp = _otpControllers.map((c) => c.text).join();
+  
+  // Clear previous messages
+  setState(() {
+    _errorMessage = null;
+    _successMessage = null;
+  });
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  // Validate OTP length
+  if (otp.length != 6) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Please enter a 6-digit OTP'),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    return;
+  }
 
-    try {
-      final verified = await _authService.verifyOtp(widget.email, otp);
-      if (verified) {
-        setState(() {
-          _successMessage = 'Email verified successfully!';
-        });
-        
-        // Call the success callback if provided
-        if (widget.onVerificationSuccess != null) {
-          widget.onVerificationSuccess!();
-        }
-        // Navigate to the '/home' route after verification
-      Navigator.pushReplacementNamed(context, '/home');
+  setState(() => _isLoading = true);
+
+  try {
+    final verified = await _authService.verifyOtp(widget.email, otp);
+    if (verified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Email verified successfully!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      
+      if (widget.onVerificationSuccess != null) {
+        widget.onVerificationSuccess!();
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      Navigator.pushReplacementNamed(context, '/home');
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.toString()),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  } finally {
+    setState(() => _isLoading = false);
   }
+}
 
-  Future<void> _resendOtp() async {
-    setState(() {
-      _isResending = true;
-      _errorMessage = null;
-    });
+Future<void> _resendOtp() async {
+  setState(() {
+    _isResending = true;
+    _errorMessage = null;
+    _successMessage = null;
+  });
 
-    try {
-      await _authService.sendOtp(widget.email);
-      setState(() {
-        _successMessage = 'New OTP sent to your email';
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
-    } finally {
-      setState(() {
-        _isResending = false;
-      });
-    }
+  try {
+    await _authService.sendOtp(widget.email);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('New OTP sent to your email'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.toString()),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    setState(() => _isResending = false);
   }
+}
+
+  
 
   void _handleOtpInput(int index, String value) {
     if (value.length == 1 && index < 5) {

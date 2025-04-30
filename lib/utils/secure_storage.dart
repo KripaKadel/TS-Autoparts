@@ -50,6 +50,22 @@ class SecureStorage {
     return email;
   }
 
+  static Future<void> savePassword(String password) async {
+    await _storage.write(key: 'password', value: password);
+  }
+
+  static Future<String?> getPassword() async {
+    return await _storage.read(key: 'password');
+  }
+
+  static Future<void> deleteEmail() async {
+    await _storage.delete(key: 'email');
+  }
+
+  static Future<void> deletePassword() async {
+    await _storage.delete(key: 'password');
+  }
+
   // ==================== PHONE NUMBER ====================
   static Future<void> savePhoneNumber(String phone) async {
     await _storage.write(key: 'phone_number', value: phone);

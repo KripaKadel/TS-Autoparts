@@ -394,7 +394,7 @@ void _showFilterOptions(BuildContext context) {
                                                 style: TextStyle(color: Color(0xFF144FAB), fontSize: 20, fontWeight: FontWeight.bold),
                                               ),
                                                TextSpan(
-                                                text: 'Your Journey',
+                                                text: ' Your Journey',
                                                 style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
                                               ),
                                             ],

@@ -245,7 +245,7 @@ class _CartScreenState extends State<CartScreen> {
   );
 }
 
-  void _showPaymentDialog() {
+void _showPaymentDialog() {
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -253,72 +253,150 @@ class _CartScreenState extends State<CartScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text('Confirm Payment', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Select Payment Method', 
+            style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Delivery to:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            SizedBox(height: 4),
-            Text(_deliveryAddress, 
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-              textAlign: TextAlign.center,
-            ),
-              SizedBox(height: 16),
-              const Text('Total Amount:', style: TextStyle(fontSize: 16)),
-              const SizedBox(height: 8),
-              Text('Rs.${totalAmount.toStringAsFixed(2)}', 
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: primaryColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  Text('Rs.${totalAmount.toStringAsFixed(2)}', 
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
-                      fontSize: 18,
-                    ),
+            // Delivery Address Section with Dropdown
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Delivery Address:', 
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Text('Including all taxes and charges', 
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedLocation,
+                    underline: SizedBox(), // Remove default underline
+                    items: pokharaLocations.map((String location) {
+                      return DropdownMenuItem<String>(
+                        value: location,
+                        child: Text(location),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedLocation = newValue;
+                        _deliveryAddress = newValue ?? '';
+                      });
+                    },
+                    hint: Text('Select delivery location'),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                SizedBox(height: 8),
+                if (_selectedLocation != null)
+                  Text(
+                    'Selected: $_selectedLocation',
+                    style: TextStyle(fontSize: 12, color: Colors.green),
+                  ),
+              ],
+            ),
+            SizedBox(height: 16),
+            const Text('Total Amount:', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 8),
+            Text('Rs.${totalAmount.toStringAsFixed(2)}', 
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
               ),
-              onPressed: () {
-                Navigator.pop(context);
-                _initiateEsewaPayment();
-              },
-              child: const Text('Pay with eSewa', 
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 24),
+            // Payment method selection
+            Column(
+              children: [
+                // COD Option
+                Container(
+                  margin: EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListTile(
+                    leading: Icon(Icons.money, color: Colors.green),
+                    title: Text('Cash on Delivery'),
+                    subtitle: Text('Pay when you receive the order'),
+                    onTap: () {
+                      if (_selectedLocation == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Please select a delivery location')),
+                        );
+                        return;
+                      }
+                      Navigator.pop(context);
+                      _processCODOrder();
+                    },
+                  ),
+                ),
+                // eSewa Option
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListTile(
+                    leading: Image.asset(
+      'assets/images/esewa.png', // Make sure you have this asset in your project
+      width: 40,
+      height: 40,
+    ),
+                    title: Text('Pay with eSewa'),
+                    subtitle: Text('Secure online payment'),
+                    onTap: () {
+                      if (_selectedLocation == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Please select a delivery location')),
+                        );
+                        return;
+                      }
+                      Navigator.pop(context);
+                      _initiateEsewaPayment();
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
-        );
-      },
-    );
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<void> _processCODOrder() async {
+  if (cartItems.isEmpty) return;
+
+  setState(() => isProcessingPayment = true);
+
+  try {
+    final referenceId = "COD-${DateTime.now().millisecondsSinceEpoch}";
+    await _createOrder(referenceId);
+    
+    if (mounted) {
+      setState(() => isProcessingPayment = false);
+      _showSuccessDialog(totalAmount);
+      await _clearCart();
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() => isProcessingPayment = false);
+      _showErrorSnackBar('Order creation failed: ${e.toString()}');
+    }
   }
+}
 
   Future<void> _initiateEsewaPayment() async {
     if (cartItems.isEmpty) return;

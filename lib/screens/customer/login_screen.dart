@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ts_autoparts_app/services/auth_service.dart';
 import 'package:ts_autoparts_app/utils/secure_storage.dart';
 import 'package:ts_autoparts_app/screens/customer/register_screen.dart';
+import 'package:ts_autoparts_app/screens/customer/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,67 +23,95 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isGoogleLoading = false;
 
-  // Login function with validation
-  Future<void> _login() async {
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
-
-  // Basic validation
-  if (email.isEmpty || password.isEmpty) {
-    setState(() {
-      _errorMessage = 'Please enter email and password';
-    });
-    return;
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedCredentials();
   }
 
-  // Email format validation
-  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-    setState(() {
-      _errorMessage = 'Please enter a valid email address';
-    });
-    return;
-  }
-
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
-
-  try {
-    final user = await _authService.loginUser(email, password);
-
-    if (user != null) {
-      // Save user data and navigate
-      await SecureStorage.saveToken(user.accessToken);
-      await SecureStorage.saveUsername(user.name);
-      await SecureStorage.saveEmail(user.email);
-      await SecureStorage.saveRole(user.role);
-
-      final role = await SecureStorage.getRole();
-      if (role == 'customer') {
-        Navigator.pushReplacementNamed(context, '/home');
-      } else if (role == 'mechanic') {
-        Navigator.pushReplacementNamed(context, '/mechanic');
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+  Future<void> _handleRememberMe() async {
+    if (_rememberMe) {
+      await SecureStorage.saveEmail(_emailController.text);
+      await SecureStorage.savePassword(_passwordController.text);
+    } else {
+      await SecureStorage.deleteEmail();
+      await SecureStorage.deletePassword();
     }
-  } on Exception catch (e) {
-    setState(() {
-      if (e.toString().contains('user_not_found')) {
-        _errorMessage = 'User not found';
-      } else if (e.toString().contains('invalid_password')) {
-        _errorMessage = 'Invalid password';
-      } else {
-        _errorMessage = 'Login failed. Please try again.';
-      }
-    });
-  } finally {
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
+
+  Future<void> _loadRememberedCredentials() async {
+    final rememberedEmail = await SecureStorage.getEmail();
+    final rememberedPassword = await SecureStorage.getPassword();
+    
+    if (rememberedEmail != null && rememberedPassword != null) {
+      setState(() {
+        _emailController.text = rememberedEmail;
+        _passwordController.text = rememberedPassword;
+        _rememberMe = true;
+      });
+    }
+  }
+
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter email and password';
+      });
+      return;
+    }
+
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      setState(() {
+        _errorMessage = 'Please enter a valid email address';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final user = await _authService.loginUser(email, password);
+
+      if (user != null) {
+        await _handleRememberMe();
+        
+        await SecureStorage.saveToken(user.accessToken);
+        await SecureStorage.saveUsername(user.name);
+        await SecureStorage.saveEmail(user.email);
+        await SecureStorage.saveRole(user.role);
+
+        final role = await SecureStorage.getRole();
+        if (role == 'customer') {
+          Navigator.pushReplacementNamed(context, '/home');
+        } else if (role == 'mechanic') {
+          Navigator.pushReplacementNamed(context, '/mechanic');
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+      }
+    } on Exception catch (e) {
+      setState(() {
+        if (e.toString().contains('user_not_found')) {
+          _errorMessage = 'User not found';
+        } else if (e.toString().contains('invalid_password')) {
+          _errorMessage = 'Invalid password';
+        } else {
+          _errorMessage = 'Login failed. Please try again.';
+        }
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _signInWithGoogle() async {
     setState(() => _isGoogleLoading = true);
     
@@ -207,9 +236,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            // TODO: Implement forgot password functionality
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Forgot Password clicked")),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgotPasswordScreen(),
+                              ),
                             );
                           },
                           child: Text(

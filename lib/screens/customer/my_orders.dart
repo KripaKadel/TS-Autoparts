@@ -25,6 +25,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     'Pending',
     'Processing',
     'Delivered',
+    'Shipped',
     'Cancelled'
   ];
 

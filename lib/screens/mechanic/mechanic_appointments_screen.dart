@@ -20,7 +20,7 @@ class _MechanicAppointmentsScreenState extends State<MechanicAppointmentsScreen>
   String _selectedStatus = 'All';
 
   final List<String> _filterOptions = ['All', 'Today', 'This Week'];
-  final List<String> _statusOptions = ['All', 'pending', 'in_progress', 'completed', 'cancelled'];
+  final List<String> _statusOptions = ['All', 'pending', 'in_progress', 'completed', 'cancelled', 'confirmed'];
 
   @override
   void initState() {
@@ -362,25 +362,6 @@ class _MechanicAppointmentsScreenState extends State<MechanicAppointmentsScreen>
                                         Text('Date: $date'),
                                         const SizedBox(height: 8),
                                         Text('Service: $serviceType'),
-                                        if (status.toLowerCase() == 'accepted') ...[
-                                          const SizedBox(height: 16),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.end,
-                                            children: [
-                                              ElevatedButton(
-                                                onPressed: () => _updateAppointmentStatus(
-                                                  appointment['id'],
-                                                  'completed',
-                                                ),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.green,
-                                                  foregroundColor: Colors.white,
-                                                ),
-                                                child: const Text('Mark as Completed'),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
                                         if (status.toLowerCase() == 'pending') ...[
                                           const SizedBox(height: 16),
                                           Row(
@@ -389,7 +370,7 @@ class _MechanicAppointmentsScreenState extends State<MechanicAppointmentsScreen>
                                               TextButton(
                                                 onPressed: () => _updateAppointmentStatus(
                                                   appointment['id'],
-                                                  'rejected',
+                                                  'cancelled',
                                                 ),
                                                 style: TextButton.styleFrom(
                                                   foregroundColor: Colors.red,
@@ -400,7 +381,7 @@ class _MechanicAppointmentsScreenState extends State<MechanicAppointmentsScreen>
                                               ElevatedButton(
                                                 onPressed: () => _updateAppointmentStatus(
                                                   appointment['id'],
-                                                  'accepted',
+                                                  'in_progress',
                                                 ),
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor: Colors.blue,

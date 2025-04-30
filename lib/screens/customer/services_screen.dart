@@ -39,7 +39,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     "Brake Service",
     "Engine Tune-up",
     "Fluid Check",
-    "Gem"
+    "General Maintenance"
   ];
   List<Map<String, dynamic>> mechanics = [];
 
@@ -208,7 +208,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[900],
+                backgroundColor: const Color(0xFF60BB47),
               ),
               onPressed: () {
                 Navigator.pop(context);
@@ -868,7 +868,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please select time between 9 AM and 5 PM'),
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 4),
+             backgroundColor: Colors.red,
           ),
         );
       }

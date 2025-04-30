@@ -29,6 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _agreeToTerms = false;
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  String? _emailError;
 
   // Focus nodes
   final FocusNode _fullNameFocusNode = FocusNode();
@@ -38,52 +39,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final FocusNode _confirmPasswordFocusNode = FocusNode();
 
   Future<void> _registerUser() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showDialog("Error", "Passwords do not match!");
-      return;
-    }
-    if (!_agreeToTerms) {
-      _showDialog("Error", "Please agree to terms and conditions");
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final user = await _authService.registerUser(
-        name: _fullNameController.text,
-        email: _emailController.text,
-        phoneNumber: _phoneController.text,
-        password: _passwordController.text,
-        confirmPassword: _confirmPasswordController.text,
-      );
-
-      if (user != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OtpVerificationScreen(
-              email: user.email,
-              onVerificationSuccess: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => HomeScreen()),
-                );
-              },
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        _showDialog("Registration Error", e.toString());
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  // Clear any previous email error
+  setState(() {
+    _emailError = null;
+  });
+  
+  if (!_formKey.currentState!.validate()) return;
+  if (_passwordController.text != _confirmPasswordController.text) {
+    _showDialog("Error", "Passwords do not match!");
+    return;
+  }
+  if (!_agreeToTerms) {
+    _showDialog("Error", "Please agree to terms and conditions");
+    return;
   }
 
+  setState(() => _isLoading = true);
+
+  try {
+    final user = await _authService.registerUser(
+      name: _fullNameController.text,
+      email: _emailController.text,
+      phoneNumber: _phoneController.text,
+      password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
+    );
+
+    if (user != null && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OtpVerificationScreen(
+            email: user.email,
+            onVerificationSuccess: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+              );
+            },
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      // Parse the specific error format from your backend
+      final errorString = e.toString();
+      if (errorString.contains('"email":["The email has already been taken."]')) {
+        setState(() {
+          _emailError = 'The email has already been taken';
+        });
+        _formKey.currentState!.validate();
+      } else {
+        // For other errors, show dialog
+        _showDialog("Registration Error", errorString);
+      }
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
+  }
+}
   Future<void> _signInWithGoogle() async {
     setState(() => _isGoogleLoading = true);
     
@@ -139,7 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Logo Section (unchanged)
+            // Logo Section
             Container(
               width: double.infinity,
               height: 300,
@@ -157,7 +172,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             
-            // Form Section (unchanged)
+            // Form Section
             Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -190,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
                       
-                      // Full Name (unchanged)
+                      // Full Name
                       _buildTextField(
                         controller: _fullNameController,
                         hintText: "Full Name",
@@ -201,21 +216,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Email (unchanged)
+                      // Email
                       _buildTextField(
                         controller: _emailController,
                         hintText: "Email",
-                        validator: (value) => 
-                            value!.isEmpty ? 'Please enter your email' :
-                            !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value) 
-                              ? 'Enter a valid email' : null,
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Please enter your email';
+                          } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                            return 'Enter a valid email';
+                          } else if (_emailError != null) {
+                            return _emailError;
+                          }
+                          return null;
+                        },
                         icon: Icons.email,
                         focusNode: _emailFocusNode,
                         nextFocusNode: _phoneFocusNode,
+                        onChanged: (value) {
+                          if (_emailError != null) {
+                            setState(() {
+                              _emailError = null;
+                            });
+                            _formKey.currentState!.validate();
+                          }
+                        },
                       ),
                       const SizedBox(height: 10),
 
-                      // Phone Number (unchanged)
+                      // Phone Number
                       _buildTextField(
                         controller: _phoneController,
                         hintText: "Phone Number",
@@ -229,7 +258,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Password (unchanged)
+                      // Password
                       _buildPasswordField(
                         controller: _passwordController,
                         hintText: "Password",
@@ -243,7 +272,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Confirm Password (unchanged)
+                      // Confirm Password
                       _buildPasswordField(
                         controller: _confirmPasswordController,
                         hintText: "Confirm Password",
@@ -257,7 +286,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Terms and conditions checkbox (unchanged)
+                      // Terms and conditions checkbox
                       Row(
                         children: [
                           Checkbox(
@@ -280,7 +309,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Register Button (unchanged)
+                      // Register Button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -310,7 +339,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // OR Divider (unchanged)
+                      // OR Divider
                       Row(
                         children: const [
                           Expanded(child: Divider()),
@@ -323,7 +352,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Google Sign-In Button (unchanged)
+                      // Google Sign-In Button
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton.icon(
@@ -356,7 +385,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Login redirect (unchanged)
+                      // Login redirect
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -397,6 +426,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     FocusNode? nextFocusNode,
     TextInputType? keyboardType,
     TextInputAction textInputAction = TextInputAction.next,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
@@ -405,6 +435,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       onFieldSubmitted: (_) => nextFocusNode?.requestFocus(),
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
         suffixIcon: Icon(icon, color: const Color(0xFF7A879C)),

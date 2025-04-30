@@ -8,8 +8,16 @@ import 'package:ts_autoparts_app/screens/customer/services_screen.dart'; // Impo
 import 'package:ts_autoparts_app/screens/customer/cart_screen.dart'; // Import Cart page
 import 'package:ts_autoparts_app/components/navbar.dart'; // Import the custom bottom navbar
 import 'package:ts_autoparts_app/screens/mechanic/mechanic_home.dart';
+import 'package:provider/provider.dart';
+import 'package:ts_autoparts_app/services/auth_service.dart';
+
 void main() {
-  runApp(MyApp());
+  runApp(
+    Provider<AuthService>(
+      create: (_) => AuthService(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
