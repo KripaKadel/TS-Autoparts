@@ -1,4 +1,71 @@
-﻿# Business Rules
+# TS Autoparts – Laravel Backend
+
+This is the backend API for the **TS Autoparts** mobile app and admin panel, built using Laravel. It handles authentication and data management.
+
+---
+
+## Prerequisites
+
+Before setting up the project, ensure the following tools are installed:
+
+- **PHP** – Version 8.0 or higher  
+- **Composer** – PHP dependency manager  
+   [Download Composer](https://getcomposer.org/download/)
+
+- **MySQL** – For database management
+---
+
+
+## Installation and Setup
+
+Follow the steps below to get your local development environment set up for the TS Autoparts backend:
+
+### 1. Clone the Repository
+Clone the repository to your local machine by running the following command:
+
+`git clone https://github.com/KripaKadel/TS-Autoparts.git`
+
+### 2. Navigate into the Project Directory
+Move into the project directory:
+
+`cd ts_autoparts`
+
+### 3. Install Composer Dependencies
+Run the following command to install all the PHP dependencies:
+
+`composer install`
+
+### 4. Copy the `.env` File
+Copy the `.env.example` file to `.env`, which will store your environment variables:
+
+`cp .env.example .env`
+
+### 5. Run Database Migrations
+Run the database migrations to set up your database tables:
+
+`php artisan migrate`
+
+### 6. Generate Application Key
+Generate a unique application key for your Laravel application:
+
+`php artisan key:generate`
+
+### 7. Start the Development Server
+Finally, start the Laravel development server:
+
+`php artisan serve`
+
+This will start the server at `http://127.0.0.1:8000` by default.
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ # Business Rules
 ## 1. Users
 * A user has a name, email, phone number, password, and role.
 * The role column can have one of three enum values: admin, customer, or mechanic.
